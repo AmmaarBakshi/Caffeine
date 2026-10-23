@@ -58,8 +58,8 @@ wait for session.lock to be released   drop guard (assertions released)
 - **Process-bound assertions.** Every backend guard wraps an OS resource that
   the OS releases on process exit: a power request handle, an IOKit assertion,
   a logind inhibitor file descriptor, or a D-Bus connection. Dropping the guard
-  releases it early. `CompositeGuard` releases its parts in reverse order and
-  collects errors.
+  releases it early. `CompositeGuard` releases its parts in reverse order,
+  keeps going if one fails, and reports the first error.
 - **Foreground modes.** `start --foreground`, `run` and `keep_awake` plugin
   commands run the same host loop in the calling process, with an extra end
   condition (Ctrl+C, the child exiting, the plugin thread finishing).
