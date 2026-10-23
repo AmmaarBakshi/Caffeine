@@ -6,6 +6,7 @@
 //! native backends live in `caffeine-platform` and implement the
 //! [`power::PowerBackend`] trait defined here.
 
+pub mod config;
 pub mod duration;
 pub mod error;
 pub mod fsutil;
