@@ -18,7 +18,6 @@ mod install;
 mod runner;
 pub mod scaffold;
 
-
 mod trust;
 
 use std::collections::{BTreeMap, BTreeSet};
