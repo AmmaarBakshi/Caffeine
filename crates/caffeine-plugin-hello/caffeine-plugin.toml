@@ -1,0 +1,29 @@
+# Caffeine plugin manifest. Reference: docs/plugins.md
+[plugin]
+name = "hello"
+version = "0.1.0"
+description = "Prints a greeting; hello-wait also keeps the system awake while it waits"
+api = "^1.0"
+permissions = ["power.inhibit"]
+
+# Paths are relative to this file. `cargo build --release` puts the binary here.
+[executable]
+path = "target/release/caffeine-hello"
+windows = "target/release/caffeine-hello.exe"
+
+[[commands]]
+name = "hello"
+summary = "Print a greeting"
+usage = "hello [NAME]..."
+
+[[commands]]
+name = "hello-wait"
+summary = "Print a greeting, then wait while the system is kept awake"
+usage = "hello-wait SECONDS"
+keep_awake = true
+
+[[settings]]
+key = "greeting"
+type = "string"
+default = "Hi"
+description = "Word used to greet"
