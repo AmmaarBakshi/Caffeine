@@ -292,6 +292,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "caffeine-plugin-build"
+version = "0.1.0"
+dependencies = [
+ "caffeine-plugin-api",
+ "semver",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "caffeine-plugin-hello"
 version = "0.1.0"
 dependencies = [
