@@ -72,8 +72,14 @@ impl LinuxBackend {
 
     fn environment(&self) -> Environment {
         let system = dbus::system_bus().ok();
-        let logind = system.as_ref().is_some_and(|c| dbus::name_has_owner(c, dbus::LOGIND));
-        let session = if self.uses_desktop() { dbus::session_bus().ok() } else { None };
+        let logind = system
+            .as_ref()
+            .is_some_and(|c| dbus::name_has_owner(c, dbus::LOGIND));
+        let session = if self.uses_desktop() {
+            dbus::session_bus().ok()
+        } else {
+            None
+        };
         let (mut idle_api, mut display_api) = (None, None);
         if let Some(conn) = &session {
             if (DesktopApi::GnomeSession { flags: 0 }).available(conn) {
@@ -200,11 +206,18 @@ impl PowerBackend for LinuxBackend {
             CapabilityStatus::new(
                 Capability::LidState,
                 Support::Supported,
-                Some(if env.logind { "logind LidClosed" } else { "/proc/acpi/button/lid" }),
+                Some(if env.logind {
+                    "logind LidClosed"
+                } else {
+                    "/proc/acpi/button/lid"
+                }),
                 "lid switch detected",
             )
         } else {
-            CapabilityStatus::unsupported(Capability::LidState, "no lid switch detected (desktop, server or VM)")
+            CapabilityStatus::unsupported(
+                Capability::LidState,
+                "no lid switch detected (desktop, server or VM)",
+            )
         });
 
         caps.push(if env.logind {
@@ -246,7 +259,10 @@ impl PowerBackend for LinuxBackend {
                 Some("/sys/class/power_supply"),
                 "AC adapter and battery status",
             ),
-            None => CapabilityStatus::unsupported(Capability::PowerSource, "/sys/class/power_supply is not available"),
+            None => CapabilityStatus::unsupported(
+                Capability::PowerSource,
+                "/sys/class/power_supply is not available",
+            ),
         });
 
         caps.push(CapabilityStatus::new(
@@ -281,7 +297,12 @@ impl PowerBackend for LinuxBackend {
                 }
             }
             if let (Some(api), Some(conn)) = (env.idle_api, &env.session) {
-                match DesktopInhibitor::acquire(conn.clone(), api, &req.reason, Capability::IdleSleep) {
+                match DesktopInhibitor::acquire(
+                    conn.clone(),
+                    api,
+                    &req.reason,
+                    Capability::IdleSleep,
+                ) {
                     Ok(g) => {
                         guard.push(Box::new(g));
                         held = true;
@@ -289,13 +310,17 @@ impl PowerBackend for LinuxBackend {
                     Err(e) => failures.push(e),
                 }
             } else if self.mode == Mode::DesktopOnly {
-                failures.push(Error::unsupported("no desktop session inhibitor interface is available"));
+                failures.push(Error::unsupported(
+                    "no desktop session inhibitor interface is available",
+                ));
             }
             if !held {
                 let mut err = failures
                     .into_iter()
                     .max_by_key(|e| e.kind() == ErrorKind::PermissionDenied)
-                    .unwrap_or_else(|| Error::unsupported("no idle-sleep inhibitor mechanism is available"));
+                    .unwrap_or_else(|| {
+                        Error::unsupported("no idle-sleep inhibitor mechanism is available")
+                    });
                 if err.hint().is_none() {
                     err = err.with_hint("run `caffeine doctor` to see which mechanisms were found");
                 }
@@ -336,7 +361,11 @@ impl PowerBackend for LinuxBackend {
                         Capability::LidSessionOverride,
                     )?));
                 } else {
-                    guard.push(Box::new(AcScopedLidInhibitor::start(conn, &req.reason, self.root())?));
+                    guard.push(Box::new(AcScopedLidInhibitor::start(
+                        conn,
+                        &req.reason,
+                        self.root(),
+                    )?));
                 }
             }
         }
@@ -356,7 +385,11 @@ impl PowerBackend for LinuxBackend {
             match dbus::logind_bool(conn, "LidClosed") {
                 Ok(closed) => {
                     return Ok(LidStatus {
-                        state: if closed { LidState::Closed } else { LidState::Open },
+                        state: if closed {
+                            LidState::Closed
+                        } else {
+                            LidState::Open
+                        },
                         source: "logind LidClosed".into(),
                         notes: vec![],
                     });
@@ -383,7 +416,10 @@ impl PowerBackend for LinuxBackend {
         let on_ac = match parse("HandleLidSwitchExternalPower") {
             Ok(Some(a)) => Some(a),
             Ok(None) | Err(_) => {
-                notes.push("HandleLidSwitchExternalPower is unset; the HandleLidSwitch action applies".into());
+                notes.push(
+                    "HandleLidSwitchExternalPower is unset; the HandleLidSwitch action applies"
+                        .into(),
+                );
                 on_battery.clone()
             }
         };
@@ -454,12 +490,25 @@ impl PowerBackend for LinuxBackend {
                     .with_hint("install and start dbus; containers often lack it"),
             ),
             (Some(_), false) => checks.push(
-                DiagnosticCheck::new("linux.logind", CheckStatus::Warn, "org.freedesktop.login1 is not running")
-                    .with_hint("install systemd-logind or elogind for system-level inhibitors"),
+                DiagnosticCheck::new(
+                    "linux.logind",
+                    CheckStatus::Warn,
+                    "org.freedesktop.login1 is not running",
+                )
+                .with_hint("install systemd-logind or elogind for system-level inhibitors"),
             ),
             (Some(conn), true) => {
-                checks.push(DiagnosticCheck::new("linux.logind", CheckStatus::Ok, "logind is available"));
-                match LogindInhibitor::acquire(conn, "idle", "caffeine doctor probe", Capability::IdleSleep) {
+                checks.push(DiagnosticCheck::new(
+                    "linux.logind",
+                    CheckStatus::Ok,
+                    "logind is available",
+                ));
+                match LogindInhibitor::acquire(
+                    conn,
+                    "idle",
+                    "caffeine doctor probe",
+                    Capability::IdleSleep,
+                ) {
                     Ok(g) => {
                         drop(g);
                         checks.push(DiagnosticCheck::new(
@@ -468,7 +517,11 @@ impl PowerBackend for LinuxBackend {
                             "logind granted and released an idle inhibitor",
                         ));
                     }
-                    Err(e) => checks.push(DiagnosticCheck::new("linux.logind-idle", CheckStatus::Fail, e.to_string())),
+                    Err(e) => checks.push(DiagnosticCheck::new(
+                        "linux.logind-idle",
+                        CheckStatus::Fail,
+                        e.to_string(),
+                    )),
                 }
                 if let Ok(action) = dbus::logind_string(conn, "IdleAction") {
                     checks.push(DiagnosticCheck::new(
@@ -493,8 +546,12 @@ impl PowerBackend for LinuxBackend {
                             ));
                         }
                         Err(e) => checks.push(
-                            DiagnosticCheck::new("linux.lid-inhibit", CheckStatus::Warn, e.to_string())
-                                .with_hint("`caffeine start --lid` will not work from this session"),
+                            DiagnosticCheck::new(
+                                "linux.lid-inhibit",
+                                CheckStatus::Warn,
+                                e.to_string(),
+                            )
+                            .with_hint("`caffeine start --lid` will not work from this session"),
                         ),
                     }
                 }
@@ -546,7 +603,12 @@ impl AcScopedLidInhibitor {
     fn start(conn: &Connection, reason: &str, root: &Path) -> Result<AcScopedLidInhibitor> {
         // Verify up front that polkit allows the inhibitor at all, so
         // permission problems are reported instead of failing silently later.
-        drop(LogindInhibitor::acquire(conn, "handle-lid-switch", reason, Capability::LidSessionOverride)?);
+        drop(LogindInhibitor::acquire(
+            conn,
+            "handle-lid-switch",
+            reason,
+            Capability::LidSessionOverride,
+        )?);
         let stop = Arc::new(AtomicBool::new(false));
         let thread_stop = Arc::clone(&stop);
         let conn = conn.clone();
@@ -558,9 +620,15 @@ impl AcScopedLidInhibitor {
                 let mut held: Option<LogindInhibitor> = None;
                 let mut logged = false;
                 while !thread_stop.load(Ordering::SeqCst) {
-                    let on_ac = sysfs::power_source(&root).is_some_and(|p| p.kind == PowerSourceKind::Ac);
+                    let on_ac =
+                        sysfs::power_source(&root).is_some_and(|p| p.kind == PowerSourceKind::Ac);
                     if on_ac && held.is_none() {
-                        match LogindInhibitor::acquire(&conn, "handle-lid-switch", &reason, Capability::LidSessionOverride) {
+                        match LogindInhibitor::acquire(
+                            &conn,
+                            "handle-lid-switch",
+                            &reason,
+                            Capability::LidSessionOverride,
+                        ) {
                             Ok(g) => {
                                 log::info!("on AC power: lid-switch inhibitor acquired");
                                 held = Some(g);
@@ -651,7 +719,12 @@ mod tests {
             held.iter().any(|i| i.what == "idle" && i.mode == "block"),
             "logind should list our idle inhibitor: {held:?}"
         );
-        assert!(guard.assertions().iter().any(|a| a.capability == Capability::IdleSleep));
+        assert!(
+            guard
+                .assertions()
+                .iter()
+                .any(|a| a.capability == Capability::IdleSleep)
+        );
         guard.release().unwrap();
         // logind processes the closed descriptor asynchronously.
         for _ in 0..50 {
@@ -678,7 +751,10 @@ mod tests {
             assert!(report.get(cap).is_some(), "{cap} missing from report");
         }
         // Never claim persistent lid writes on Linux.
-        assert_eq!(report.support(Capability::LidPolicyWrite), Support::Unsupported);
+        assert_eq!(
+            report.support(Capability::LidPolicyWrite),
+            Support::Unsupported
+        );
     }
 
     #[test]
@@ -692,7 +768,10 @@ mod tests {
             display: true,
             ..AwakeRequest::default()
         };
-        let err = b.acquire(&req).err().expect("display needs a desktop session");
+        let err = b
+            .acquire(&req)
+            .err()
+            .expect("display needs a desktop session");
         assert_eq!(err.kind(), ErrorKind::Unsupported);
     }
 }

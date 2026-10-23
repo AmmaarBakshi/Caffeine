@@ -63,6 +63,10 @@ impl PowerBackend for UnsupportedBackend {
     }
 
     fn diagnose(&self) -> Vec<DiagnosticCheck> {
-        vec![DiagnosticCheck::new("platform", CheckStatus::Fail, err().to_string())]
+        vec![DiagnosticCheck::new(
+            "platform",
+            CheckStatus::Fail,
+            err().to_string(),
+        )]
     }
 }

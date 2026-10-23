@@ -52,7 +52,10 @@ pub fn format_relative(ts: u64, now: u64) -> String {
         if d < 5 {
             "just now".to_string()
         } else {
-            format!("{} ago", crate::duration::format_duration(Duration::from_secs(d)))
+            format!(
+                "{} ago",
+                crate::duration::format_duration(Duration::from_secs(d))
+            )
         }
     } else {
         format!(

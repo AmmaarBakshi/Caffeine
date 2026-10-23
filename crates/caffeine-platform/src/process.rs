@@ -25,7 +25,9 @@ pub fn configure_detached(cmd: &mut Command) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(windows_flags::DETACHED_PROCESS | windows_flags::CREATE_NEW_PROCESS_GROUP);
+        cmd.creation_flags(
+            windows_flags::DETACHED_PROCESS | windows_flags::CREATE_NEW_PROCESS_GROUP,
+        );
     }
 }
 
@@ -93,8 +95,8 @@ pub fn is_alive(pid: u32) -> bool {
 pub fn kill(pid: u32) -> Result<()> {
     #[cfg(unix)]
     {
-        let raw = libc::pid_t::try_from(pid)
-            .map_err(|_| Error::usage(format!("invalid pid {pid}")))?;
+        let raw =
+            libc::pid_t::try_from(pid).map_err(|_| Error::usage(format!("invalid pid {pid}")))?;
         // SAFETY: sending a signal has no memory-safety implications.
         if unsafe { libc::kill(raw, libc::SIGKILL) } != 0 {
             let err = std::io::Error::last_os_error();
@@ -108,7 +110,9 @@ pub fn kill(pid: u32) -> Result<()> {
     #[cfg(windows)]
     {
         use windows_sys::Win32::Foundation::{CloseHandle, GetLastError};
-        use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_TERMINATE, TerminateProcess};
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_TERMINATE, TerminateProcess,
+        };
         // SAFETY: plain Win32 calls; the handle is closed before returning.
         unsafe {
             let h = OpenProcess(PROCESS_TERMINATE, 0, pid);
@@ -117,8 +121,10 @@ pub fn kill(pid: u32) -> Result<()> {
                     return Ok(());
                 }
                 let code = GetLastError();
-                return Err(Error::permission(format!("cannot open process {pid} to terminate it"))
-                    .with_os_code(i64::from(code)));
+                return Err(Error::permission(format!(
+                    "cannot open process {pid} to terminate it"
+                ))
+                .with_os_code(i64::from(code)));
             }
             let ok = TerminateProcess(h, 1) != 0;
             let code = GetLastError();
@@ -133,7 +139,9 @@ pub fn kill(pid: u32) -> Result<()> {
     }
     #[cfg(not(any(unix, windows)))]
     {
-        Err(Error::unsupported(format!("cannot terminate process {pid} on this platform")))
+        Err(Error::unsupported(format!(
+            "cannot terminate process {pid} on this platform"
+        )))
     }
 }
 
@@ -149,7 +157,10 @@ mod tests {
     #[test]
     fn kill_terminates_a_child() {
         #[cfg(windows)]
-        let mut child = Command::new("cmd").args(["/C", "ping -n 30 127.0.0.1 >NUL"]).spawn().unwrap();
+        let mut child = Command::new("cmd")
+            .args(["/C", "ping -n 30 127.0.0.1 >NUL"])
+            .spawn()
+            .unwrap();
         #[cfg(unix)]
         let mut child = Command::new("sleep").arg("30").spawn().unwrap();
         let pid = child.id();

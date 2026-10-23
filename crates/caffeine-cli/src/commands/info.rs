@@ -20,15 +20,26 @@ fn support_style(s: Support) -> Style {
 
 pub fn print_platform(out: &Output, report: &CapabilityReport) {
     let p = &report.platform;
-    let mut parts = vec![p.os_version.clone().unwrap_or_else(|| p.os.clone()), p.arch.clone()];
+    let mut parts = vec![
+        p.os_version.clone().unwrap_or_else(|| p.os.clone()),
+        p.arch.clone(),
+    ];
     if let Some(init) = &p.init_system {
         parts.push(format!("init {init}"));
     }
     if let Some(de) = &p.desktop {
         parts.push(format!("desktop {de}"));
     }
-    out.line(format!("{} {}", out.paint(Style::Bold, "Platform:"), parts.join(" · ")));
-    out.line(format!("{} {}", out.paint(Style::Bold, "Backend: "), p.backend));
+    out.line(format!(
+        "{} {}",
+        out.paint(Style::Bold, "Platform:"),
+        parts.join(" · ")
+    ));
+    out.line(format!(
+        "{} {}",
+        out.paint(Style::Bold, "Backend: "),
+        p.backend
+    ));
     for n in &p.notes {
         out.line(format!("          {n}"));
     }
@@ -62,11 +73,16 @@ struct DoctorReport {
 fn check_dir_writable(id: &str, label: &str, dir: &std::path::Path) -> DiagnosticCheck {
     let probe = dir.join(format!(".caffeine-doctor-{}", std::process::id()));
     let result = Paths::ensure_dir(dir).and_then(|_| {
-        std::fs::write(&probe, b"ok").map_err(|e| caffeine_core::Error::io(format!("writing {}", probe.display()), e))
+        std::fs::write(&probe, b"ok")
+            .map_err(|e| caffeine_core::Error::io(format!("writing {}", probe.display()), e))
     });
     let _ = std::fs::remove_file(&probe);
     match result {
-        Ok(()) => DiagnosticCheck::new(id, CheckStatus::Ok, format!("{label} is writable: {}", dir.display())),
+        Ok(()) => DiagnosticCheck::new(
+            id,
+            CheckStatus::Ok,
+            format!("{label} is writable: {}", dir.display()),
+        ),
         Err(e) => DiagnosticCheck::new(id, CheckStatus::Fail, e.to_string())
             .with_hint("set CAFFEINE_HOME to a writable directory, or fix the permissions"),
     }
@@ -77,8 +93,11 @@ pub fn core_checks(ctx: &Ctx) -> Vec<DiagnosticCheck> {
     let mut checks = Vec::new();
     match &ctx.config_error {
         Some(e) => checks.push(
-            DiagnosticCheck::new("config.load", CheckStatus::Fail, e.to_string())
-                .with_hint(e.hint().unwrap_or("run `caffeine config validate`").to_string()),
+            DiagnosticCheck::new("config.load", CheckStatus::Fail, e.to_string()).with_hint(
+                e.hint()
+                    .unwrap_or("run `caffeine config validate`")
+                    .to_string(),
+            ),
         ),
         None if ctx.config.exists_on_disk() => checks.push(DiagnosticCheck::new(
             "config.load",
@@ -88,19 +107,38 @@ pub fn core_checks(ctx: &Ctx) -> Vec<DiagnosticCheck> {
         None => checks.push(DiagnosticCheck::new(
             "config.load",
             CheckStatus::Info,
-            format!("no configuration file at {}; using defaults", ctx.config.path().display()),
+            format!(
+                "no configuration file at {}; using defaults",
+                ctx.config.path().display()
+            ),
         )),
     }
     for note in ctx.config.notes() {
-        checks.push(DiagnosticCheck::new("config.notes", CheckStatus::Warn, note.clone()));
+        checks.push(DiagnosticCheck::new(
+            "config.notes",
+            CheckStatus::Warn,
+            note.clone(),
+        ));
     }
     if let Some(reason) = ctx.config.read_only_reason()
         && ctx.config_error.is_none()
     {
-        checks.push(DiagnosticCheck::new("config.version", CheckStatus::Warn, reason.to_string()));
+        checks.push(DiagnosticCheck::new(
+            "config.version",
+            CheckStatus::Warn,
+            reason.to_string(),
+        ));
     }
-    checks.push(check_dir_writable("paths.runtime", "runtime directory", &ctx.paths.runtime_dir));
-    checks.push(check_dir_writable("paths.data", "data directory", &ctx.paths.data_dir));
+    checks.push(check_dir_writable(
+        "paths.runtime",
+        "runtime directory",
+        &ctx.paths.runtime_dir,
+    ));
+    checks.push(check_dir_writable(
+        "paths.data",
+        "data directory",
+        &ctx.paths.data_dir,
+    ));
     match crate::commands::session::probe_summary(&ctx.store) {
         Ok((status, summary, hint)) => {
             let mut c = DiagnosticCheck::new("session.state", status, summary);
@@ -109,7 +147,11 @@ pub fn core_checks(ctx: &Ctx) -> Vec<DiagnosticCheck> {
             }
             checks.push(c);
         }
-        Err(e) => checks.push(DiagnosticCheck::new("session.state", CheckStatus::Fail, e.to_string())),
+        Err(e) => checks.push(DiagnosticCheck::new(
+            "session.state",
+            CheckStatus::Fail,
+            e.to_string(),
+        )),
     }
     checks
 }
@@ -126,7 +168,11 @@ pub fn doctor(ctx: &Ctx, extra: Vec<DiagnosticCheck>) -> Result<ExitCode> {
                     CheckStatus::Info,
                     format!(
                         "{} {} · backend {}",
-                        report.platform.os_version.clone().unwrap_or(report.platform.os.clone()),
+                        report
+                            .platform
+                            .os_version
+                            .clone()
+                            .unwrap_or(report.platform.os.clone()),
                         report.platform.arch,
                         report.platform.backend
                     ),
@@ -152,10 +198,18 @@ pub fn doctor(ctx: &Ctx, extra: Vec<DiagnosticCheck>) -> Result<ExitCode> {
                         });
                     }
                 }
-                Err(e) => checks.push(DiagnosticCheck::new("recovery.journal", CheckStatus::Fail, e.to_string())),
+                Err(e) => checks.push(DiagnosticCheck::new(
+                    "recovery.journal",
+                    CheckStatus::Fail,
+                    e.to_string(),
+                )),
             }
         }
-        Err(e) => checks.push(DiagnosticCheck::new("platform.backend", CheckStatus::Fail, e.to_string())),
+        Err(e) => checks.push(DiagnosticCheck::new(
+            "platform.backend",
+            CheckStatus::Fail,
+            e.to_string(),
+        )),
     }
     checks.extend(extra);
 
@@ -175,17 +229,31 @@ pub fn doctor(ctx: &Ctx, extra: Vec<DiagnosticCheck>) -> Result<ExitCode> {
         };
         out.line(format!("[{tag}] {}", c.summary));
         if let Some(h) = &c.hint {
-            out.line(format!("       {}", out.paint(Style::Dim, format!("hint: {h}"))));
+            out.line(format!(
+                "       {}",
+                out.paint(Style::Dim, format!("hint: {h}"))
+            ));
         }
     }
-    let (fails, warns) = report.checks.iter().fold((0, 0), |(f, w), c| match c.status {
-        CheckStatus::Fail => (f + 1, w),
-        CheckStatus::Warn => (f, w + 1),
-        _ => (f, w),
-    });
+    let (fails, warns) = report
+        .checks
+        .iter()
+        .fold((0, 0), |(f, w), c| match c.status {
+            CheckStatus::Fail => (f + 1, w),
+            CheckStatus::Warn => (f, w + 1),
+            _ => (f, w),
+        });
     out.line(format!(
         "\n{} {fails} failure(s), {warns} warning(s)",
-        if ok { out.paint(Style::Good, "Summary:") } else { out.paint(Style::Bad, "Summary:") }
+        if ok {
+            out.paint(Style::Good, "Summary:")
+        } else {
+            out.paint(Style::Bad, "Summary:")
+        }
     ));
-    Ok(if ok { ExitCode::SUCCESS } else { ExitCode::FAILURE })
+    Ok(if ok {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }

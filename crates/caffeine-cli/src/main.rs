@@ -42,7 +42,13 @@ fn main() -> ExitCode {
     };
     let level = match cli.global.verbose {
         0 if cli.global.quiet => log::LevelFilter::Error,
-        0 => ctx.config.config().general.log_level.to_filter().min(log::LevelFilter::Warn),
+        0 => ctx
+            .config
+            .config()
+            .general
+            .log_level
+            .to_filter()
+            .min(log::LevelFilter::Warn),
         1 => log::LevelFilter::Info,
         2 => log::LevelFilter::Debug,
         _ => log::LevelFilter::Trace,
@@ -60,11 +66,15 @@ fn main() -> ExitCode {
 
 fn dispatch(ctx: &mut Ctx, cli: &Cli) -> Result<ExitCode> {
     if cli.config_editor && cli.command.is_some() {
-        return Err(Error::usage("--config opens the configuration editor and cannot be combined with a command"));
+        return Err(Error::usage(
+            "--config opens the configuration editor and cannot be combined with a command",
+        ));
     }
     if cli.config_editor {
-        return Err(Error::unsupported("the interactive editor is not available in this build")
-            .with_hint("use `caffeine config edit` or `caffeine config set`"));
+        return Err(
+            Error::unsupported("the interactive editor is not available in this build")
+                .with_hint("use `caffeine config edit` or `caffeine config set`"),
+        );
     }
     let Some(command) = &cli.command else {
         return match ctx.config.config().general.default_command {
@@ -100,7 +110,12 @@ fn dispatch(ctx: &mut Ctx, cli: &Cli) -> Result<ExitCode> {
         Command::Doctor => commands::info::doctor(ctx, Vec::new()),
         Command::Config(args) => commands::config::run(ctx, &args.action, &[]),
         Command::Completions { shell } => {
-            clap_complete::generate(*shell, &mut Cli::command(), "caffeine", &mut std::io::stdout());
+            clap_complete::generate(
+                *shell,
+                &mut Cli::command(),
+                "caffeine",
+                &mut std::io::stdout(),
+            );
             Ok(ExitCode::SUCCESS)
         }
         Command::Host => unreachable!("handled before context creation"),

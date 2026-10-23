@@ -32,8 +32,17 @@ pub const kIOMainPortDefault: mach_port_t = 0;
 
 #[link(name = "CoreFoundation", kind = "framework")]
 unsafe extern "C" {
-    pub fn CFStringCreateWithCString(alloc: CFAllocatorRef, cstr: *const c_char, encoding: u32) -> CFStringRef;
-    pub fn CFStringGetCString(s: CFStringRef, buf: *mut c_char, size: CFIndex, encoding: u32) -> Boolean;
+    pub fn CFStringCreateWithCString(
+        alloc: CFAllocatorRef,
+        cstr: *const c_char,
+        encoding: u32,
+    ) -> CFStringRef;
+    pub fn CFStringGetCString(
+        s: CFStringRef,
+        buf: *mut c_char,
+        size: CFIndex,
+        encoding: u32,
+    ) -> Boolean;
     pub fn CFRelease(cf: CFTypeRef);
     pub fn CFGetTypeID(cf: CFTypeRef) -> CFTypeID;
     pub fn CFBooleanGetTypeID() -> CFTypeID;
@@ -56,7 +65,10 @@ unsafe extern "C" {
     ) -> IOReturn;
     pub fn IOPMAssertionRelease(id: IOPMAssertionID) -> IOReturn;
     pub fn IOServiceMatching(name: *const c_char) -> CFMutableDictionaryRef;
-    pub fn IOServiceGetMatchingService(main_port: mach_port_t, matching: CFDictionaryRef) -> io_object_t;
+    pub fn IOServiceGetMatchingService(
+        main_port: mach_port_t,
+        matching: CFDictionaryRef,
+    ) -> io_object_t;
     pub fn IORegistryEntryCreateCFProperty(
         entry: io_object_t,
         key: CFStringRef,
@@ -95,7 +107,9 @@ impl Drop for CfOwned {
 pub fn cf_string(s: &str) -> Option<CfOwned> {
     let c = CString::new(s).ok()?;
     // SAFETY: `c` is a valid NUL-terminated string for the call.
-    CfOwned::new(unsafe { CFStringCreateWithCString(std::ptr::null(), c.as_ptr(), kCFStringEncodingUTF8) })
+    CfOwned::new(unsafe {
+        CFStringCreateWithCString(std::ptr::null(), c.as_ptr(), kCFStringEncodingUTF8)
+    })
 }
 
 /// Convert a borrowed CFString to a Rust string.
@@ -109,18 +123,30 @@ pub fn to_string(s: CFStringRef) -> Option<String> {
     }
     let mut buf = vec![0 as c_char; 512];
     // SAFETY: buffer length is passed correctly.
-    let ok = unsafe { CFStringGetCString(s, buf.as_mut_ptr(), buf.len() as CFIndex, kCFStringEncodingUTF8) };
+    let ok = unsafe {
+        CFStringGetCString(
+            s,
+            buf.as_mut_ptr(),
+            buf.len() as CFIndex,
+            kCFStringEncodingUTF8,
+        )
+    };
     if ok == 0 {
         return None;
     }
     // SAFETY: CFStringGetCString NUL-terminated the buffer.
-    Some(unsafe { std::ffi::CStr::from_ptr(buf.as_ptr()) }.to_string_lossy().into_owned())
+    Some(
+        unsafe { std::ffi::CStr::from_ptr(buf.as_ptr()) }
+            .to_string_lossy()
+            .into_owned(),
+    )
 }
 
 /// Interpret a borrowed CF object as a boolean.
 pub fn to_bool(v: CFTypeRef) -> Option<bool> {
     // SAFETY: type check before reading.
-    (!v.is_null() && unsafe { CFGetTypeID(v) == CFBooleanGetTypeID() }).then(|| unsafe { CFBooleanGetValue(v) != 0 })
+    (!v.is_null() && unsafe { CFGetTypeID(v) == CFBooleanGetTypeID() })
+        .then(|| unsafe { CFBooleanGetValue(v) != 0 })
 }
 
 /// Interpret a borrowed CF object as an i32 number.
@@ -147,13 +173,16 @@ pub fn dict_get(dict: CFDictionaryRef, key: &str) -> CFTypeRef {
 pub fn root_domain_property(key: &str) -> Option<CfOwned> {
     let name = CString::new("IOPMrootDomain").ok()?;
     // SAFETY: IOServiceGetMatchingService consumes the matching dictionary.
-    let service = unsafe { IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(name.as_ptr())) };
+    let service = unsafe {
+        IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(name.as_ptr()))
+    };
     if service == 0 {
         return None;
     }
     let key = cf_string(key)?;
     // SAFETY: valid service and key; the result follows the Create rule.
-    let value = unsafe { IORegistryEntryCreateCFProperty(service, key.as_ptr(), std::ptr::null(), 0) };
+    let value =
+        unsafe { IORegistryEntryCreateCFProperty(service, key.as_ptr(), std::ptr::null(), 0) };
     // SAFETY: releasing the service object obtained above.
     unsafe { IOObjectRelease(service) };
     CfOwned::new(value)

@@ -73,7 +73,10 @@ pub fn query(timeout: Duration) -> Result<LidState> {
         )
     };
     if rc != ERROR_SUCCESS {
-        return Err(win_error("PowerSettingRegisterNotification(lid switch)", rc));
+        return Err(win_error(
+            "PowerSettingRegisterNotification(lid switch)",
+            rc,
+        ));
     }
 
     let slot = SLOT.lock().unwrap_or_else(|p| p.into_inner());

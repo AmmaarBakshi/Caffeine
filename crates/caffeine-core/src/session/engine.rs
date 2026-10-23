@@ -149,7 +149,11 @@ impl<'a> SessionHost<'a> {
         }
         let _lock = self.store.acquire_host_lock()?;
         if let Ok(Some(stale)) = self.store.read_state() {
-            log::warn!("removing stale state of session {} (pid {})", stale.id, stale.pid);
+            log::warn!(
+                "removing stale state of session {} (pid {})",
+                stale.id,
+                stale.pid
+            );
         }
         self.store.remove_state()?;
         self.store.clear_stop_request()?;
@@ -163,7 +167,11 @@ impl<'a> SessionHost<'a> {
             mode: self.options.mode.clone(),
             backend: self.backend.name().to_string(),
             started_at,
-            expires_at: self.options.length.as_duration().map(|d| started_at + d.as_secs()),
+            expires_at: self
+                .options
+                .length
+                .as_duration()
+                .map(|d| started_at + d.as_secs()),
             request: self.options.request.clone(),
             assertions: guard.assertions(),
             battery: self.options.battery,

@@ -25,7 +25,8 @@ pub fn run(ctx: &mut Ctx, action: &ConfigAction, secret_paths: &[String]) -> Res
         ConfigAction::Get { key } => {
             let cfg = loaded(ctx)?;
             let value = cfg.get(key)?;
-            ctx.out.json(&serde_json::json!({ "key": key, "value": value }));
+            ctx.out
+                .json(&serde_json::json!({ "key": key, "value": value }));
             ctx.out.answer(value);
             Ok(ExitCode::SUCCESS)
         }
@@ -43,8 +44,11 @@ pub fn run(ctx: &mut Ctx, action: &ConfigAction, secret_paths: &[String]) -> Res
 /// work on defaults.
 fn loaded(ctx: &Ctx) -> Result<&ConfigFile> {
     match &ctx.config_error {
-        Some(e) => Err(Error::config(e.message().to_string())
-            .with_hint(e.hint().unwrap_or("run `caffeine config validate`").to_string())),
+        Some(e) => Err(Error::config(e.message().to_string()).with_hint(
+            e.hint()
+                .unwrap_or("run `caffeine config validate`")
+                .to_string(),
+        )),
         None => Ok(&ctx.config),
     }
 }
@@ -52,11 +56,18 @@ fn loaded(ctx: &Ctx) -> Result<&ConfigFile> {
 fn show(ctx: &Ctx, secret_paths: &[String]) -> Result<ExitCode> {
     ctx.warn_config_problems();
     let json = config::effective_json(ctx.config.config(), secret_paths);
-    ctx.out.json(&serde_json::json!({ "config_file": ctx.config.path(), "effective": json }));
+    ctx.out
+        .json(&serde_json::json!({ "config_file": ctx.config.path(), "effective": json }));
     if ctx.out.is_json() {
         return Ok(ExitCode::SUCCESS);
     }
-    ctx.out.line(ctx.out.paint(Style::Dim, format!("# effective configuration ({})", ctx.config.path().display())));
+    ctx.out.line(ctx.out.paint(
+        Style::Dim,
+        format!(
+            "# effective configuration ({})",
+            ctx.config.path().display()
+        ),
+    ));
     ctx.out.answer(render_toml(&json).trim_end());
     Ok(ExitCode::SUCCESS)
 }
@@ -67,23 +78,33 @@ fn render_toml(json: &serde_json::Value) -> String {
     fn strip_nulls(v: &serde_json::Value) -> serde_json::Value {
         match v {
             serde_json::Value::Object(map) => serde_json::Value::Object(
-                map.iter().filter(|(_, v)| !v.is_null()).map(|(k, v)| (k.clone(), strip_nulls(v))).collect(),
+                map.iter()
+                    .filter(|(_, v)| !v.is_null())
+                    .map(|(k, v)| (k.clone(), strip_nulls(v)))
+                    .collect(),
             ),
             other => other.clone(),
         }
     }
-    toml_edit::ser::to_string_pretty(&strip_nulls(json)).unwrap_or_else(|e| format!("# cannot render: {e}"))
+    toml_edit::ser::to_string_pretty(&strip_nulls(json))
+        .unwrap_or_else(|e| format!("# cannot render: {e}"))
 }
 
-fn modify(ctx: &mut Ctx, change: impl FnOnce(&mut ConfigFile) -> Result<()>, key: &str) -> Result<ExitCode> {
+fn modify(
+    ctx: &mut Ctx,
+    change: impl FnOnce(&mut ConfigFile) -> Result<()>,
+    key: &str,
+) -> Result<ExitCode> {
     loaded(ctx)?;
     let created = !ctx.config.exists_on_disk();
     change(&mut ctx.config)?;
     ctx.config.save()?;
     let value = ctx.config.get(key).unwrap_or_default();
-    ctx.out.json(&serde_json::json!({ "key": key, "value": value, "config_file": ctx.config.path() }));
+    ctx.out
+        .json(&serde_json::json!({ "key": key, "value": value, "config_file": ctx.config.path() }));
     if created {
-        ctx.out.note(format!("created {}", ctx.config.path().display()));
+        ctx.out
+            .note(format!("created {}", ctx.config.path().display()));
     }
     ctx.out.line(format!("{key} = {value}"));
     Ok(ExitCode::SUCCESS)
@@ -104,9 +125,16 @@ fn validate(ctx: &Ctx) -> Result<ExitCode> {
         "warnings": notes,
     }));
     if !path.exists() {
-        ctx.out.line(format!("{} does not exist; defaults are in effect.", path.display()));
+        ctx.out.line(format!(
+            "{} does not exist; defaults are in effect.",
+            path.display()
+        ));
     } else if ok {
-        ctx.out.line(format!("{} {}", ctx.out.paint(Style::Good, "valid:"), path.display()));
+        ctx.out.line(format!(
+            "{} {}",
+            ctx.out.paint(Style::Good, "valid:"),
+            path.display()
+        ));
     }
     for n in &notes {
         ctx.out.warn(n.clone());
@@ -121,30 +149,51 @@ fn validate(ctx: &Ctx) -> Result<ExitCode> {
 fn init(ctx: &Ctx) -> Result<ExitCode> {
     let path = ctx.config.path();
     if path.exists() {
-        ctx.out.json(&serde_json::json!({ "created": false, "config_file": path }));
-        ctx.out.line(format!("{} already exists; nothing was changed.", path.display()));
+        ctx.out
+            .json(&serde_json::json!({ "created": false, "config_file": path }));
+        ctx.out.line(format!(
+            "{} already exists; nothing was changed.",
+            path.display()
+        ));
         return Ok(ExitCode::SUCCESS);
     }
     fsutil::write_atomic(path, config::template().as_bytes(), false)?;
-    ctx.out.json(&serde_json::json!({ "created": true, "config_file": path }));
-    ctx.out.line(format!("{} {}", ctx.out.paint(Style::Good, "created"), path.display()));
+    ctx.out
+        .json(&serde_json::json!({ "created": true, "config_file": path }));
+    ctx.out.line(format!(
+        "{} {}",
+        ctx.out.paint(Style::Good, "created"),
+        path.display()
+    ));
     Ok(ExitCode::SUCCESS)
 }
 
 fn reset(ctx: &Ctx, yes: bool) -> Result<ExitCode> {
     let path = ctx.config.path();
     if !yes && path.exists() {
-        match confirm(&format!("Replace {} with defaults? (a backup is kept)", path.display())) {
+        match confirm(&format!(
+            "Replace {} with defaults? (a backup is kept)",
+            path.display()
+        )) {
             Some(true) => {}
             Some(false) => return Err(Error::failure("cancelled; nothing was changed")),
-            None => return Err(Error::usage("refusing to reset without confirmation").with_hint("re-run with --yes")),
+            None => {
+                return Err(Error::usage("refusing to reset without confirmation")
+                    .with_hint("re-run with --yes"));
+            }
         }
     }
     let backup = ConfigFile::reset(path)?;
-    ctx.out.json(&serde_json::json!({ "config_file": path, "backup": backup }));
-    ctx.out.line(format!("{} {}", ctx.out.paint(Style::Good, "reset"), path.display()));
+    ctx.out
+        .json(&serde_json::json!({ "config_file": path, "backup": backup }));
+    ctx.out.line(format!(
+        "{} {}",
+        ctx.out.paint(Style::Good, "reset"),
+        path.display()
+    ));
     if let Some(b) = backup {
-        ctx.out.line(format!("  previous file saved as {}", b.display()));
+        ctx.out
+            .line(format!("  previous file saved as {}", b.display()));
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -169,14 +218,22 @@ fn list(ctx: &Ctx) -> Result<ExitCode> {
     for d in &defs {
         if section != Some(d.section) {
             section = Some(d.section);
-            ctx.out.line(format!("\n{}", ctx.out.paint(Style::Bold, d.section.title())));
+            ctx.out.line(format!(
+                "\n{}",
+                ctx.out.paint(Style::Bold, d.section.title())
+            ));
         }
         ctx.out.line(format!(
             "  {:<30} {}",
             d.key,
-            ctx.out.paint(Style::Accent, ctx.config.get(d.key).unwrap_or_default())
+            ctx.out
+                .paint(Style::Accent, ctx.config.get(d.key).unwrap_or_default())
         ));
-        ctx.out.line(format!("  {:<30} {}", "", ctx.out.paint(Style::Dim, d.kind.describe())));
+        ctx.out.line(format!(
+            "  {:<30} {}",
+            "",
+            ctx.out.paint(Style::Dim, d.kind.describe())
+        ));
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -225,18 +282,29 @@ fn find_editor() -> Option<Vec<String>> {
             }
         }
     }
-    let candidates: &[&str] = if cfg!(windows) { &["notepad.exe"] } else { &["nano", "vim", "vi"] };
-    candidates.iter().find(|c| which(c).is_some()).map(|c| vec![c.to_string()])
+    let candidates: &[&str] = if cfg!(windows) {
+        &["notepad.exe"]
+    } else {
+        &["nano", "vim", "vi"]
+    };
+    candidates
+        .iter()
+        .find(|c| which(c).is_some())
+        .map(|c| vec![c.to_string()])
 }
 
 fn which(program: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path).map(|d| d.join(program)).find(|p| p.is_file())
+    std::env::split_paths(&path)
+        .map(|d| d.join(program))
+        .find(|p| p.is_file())
 }
 
 fn edit(ctx: &mut Ctx) -> Result<ExitCode> {
     if ctx.out.is_json() {
-        return Err(Error::usage("`config edit` is interactive and does not support --json"));
+        return Err(Error::usage(
+            "`config edit` is interactive and does not support --json",
+        ));
     }
     let editor = find_editor().ok_or_else(|| {
         Error::not_found("no editor found (set $VISUAL or $EDITOR)")
@@ -254,10 +322,15 @@ fn edit(ctx: &mut Ctx) -> Result<ExitCode> {
             .status()
             .map_err(|e| Error::io(format!("starting editor `{}`", editor[0]), e))?;
         if !status.success() {
-            return Err(Error::failure(format!("editor exited with {status}; your edits are in {}", scratch.display())));
+            return Err(Error::failure(format!(
+                "editor exited with {status}; your edits are in {}",
+                scratch.display()
+            )));
         }
         let edited = fsutil::read_optional(&scratch)?.unwrap_or_default();
-        if Some(&edited) == original.as_ref() || (original.is_none() && edited == config::template()) {
+        if Some(&edited) == original.as_ref()
+            || (original.is_none() && edited == config::template())
+        {
             fsutil::remove_if_exists(&scratch)?;
             ctx.out.line("No changes.");
             return Ok(ExitCode::SUCCESS);
@@ -273,7 +346,11 @@ fn edit(ctx: &mut Ctx) -> Result<ExitCode> {
                 }
                 fsutil::write_atomic(&path, edited.as_bytes(), true)?;
                 fsutil::remove_if_exists(&scratch)?;
-                ctx.out.line(format!("{} {}", ctx.out.paint(Style::Good, "saved"), path.display()));
+                ctx.out.line(format!(
+                    "{} {}",
+                    ctx.out.paint(Style::Good, "saved"),
+                    path.display()
+                ));
                 return Ok(ExitCode::SUCCESS);
             }
             Err(e) => {
@@ -282,7 +359,10 @@ fn edit(ctx: &mut Ctx) -> Result<ExitCode> {
                     Some(false) | None => {
                         return Err(Error::new(
                             ErrorKind::Config,
-                            format!("configuration not saved; your edits are in {}", scratch.display()),
+                            format!(
+                                "configuration not saved; your edits are in {}",
+                                scratch.display()
+                            ),
                         ));
                     }
                     Some(true) => text = edited,
@@ -293,7 +373,10 @@ fn edit(ctx: &mut Ctx) -> Result<ExitCode> {
 }
 
 fn scratch_path(path: &Path) -> PathBuf {
-    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "config.toml".into());
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "config.toml".into());
     path.with_file_name(format!(".{name}.edit-{}.toml", std::process::id()))
 }
 
@@ -309,7 +392,10 @@ mod tests {
             split_command_line(r#""C:\Program Files\Notepad++\notepad++.exe" -multiInst"#),
             [r"C:\Program Files\Notepad++\notepad++.exe", "-multiInst"]
         );
-        assert_eq!(split_command_line("  vim  -u 'my vimrc' "), ["vim", "-u", "my vimrc"]);
+        assert_eq!(
+            split_command_line("  vim  -u 'my vimrc' "),
+            ["vim", "-u", "my vimrc"]
+        );
         assert!(split_command_line("   ").is_empty());
     }
 }

@@ -326,12 +326,16 @@ impl Config {
         }
         for name in &self.plugins.enabled {
             if !is_valid_plugin_name(name) {
-                problems.push(format!("plugins.enabled: \"{name}\" is not a valid plugin name"));
+                problems.push(format!(
+                    "plugins.enabled: \"{name}\" is not a valid plugin name"
+                ));
             }
         }
         for name in self.plugins.settings.keys() {
             if !is_valid_plugin_name(name) {
-                problems.push(format!("plugins.settings: \"{name}\" is not a valid plugin name"));
+                problems.push(format!(
+                    "plugins.settings: \"{name}\" is not a valid plugin name"
+                ));
             }
         }
         for path in &self.plugins.search_paths {
@@ -387,7 +391,16 @@ mod tests {
         for good in ["build", "my-plugin", "a1", "x"] {
             assert!(is_valid_plugin_name(good), "{good}");
         }
-        for bad in ["", "Build", "1abc", "a--b", "a-", "a_b", "a b", &"a".repeat(65)] {
+        for bad in [
+            "",
+            "Build",
+            "1abc",
+            "a--b",
+            "a-",
+            "a_b",
+            "a b",
+            &"a".repeat(65),
+        ] {
             assert!(!is_valid_plugin_name(bad), "{bad}");
         }
     }
@@ -405,7 +418,10 @@ mod tests {
 
     #[test]
     fn enums_parse_and_display() {
-        assert_eq!("keep-on".parse::<DisplayPolicy>().unwrap(), DisplayPolicy::KeepOn);
+        assert_eq!(
+            "keep-on".parse::<DisplayPolicy>().unwrap(),
+            DisplayPolicy::KeepOn
+        );
         assert!("sometimes".parse::<DisplayPolicy>().is_err());
         assert_eq!(ConflictPolicy::Replace.to_string(), "replace");
     }

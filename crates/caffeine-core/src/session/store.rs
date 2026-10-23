@@ -232,9 +232,9 @@ impl SessionStore {
         let file = self.open_lock_file(&self.lock_path())?;
         match file.try_lock() {
             Ok(()) => Ok(HostLock { _file: file }),
-            Err(TryLockError::WouldBlock) => {
-                Err(Error::conflict("another Caffeine session is already active"))
-            }
+            Err(TryLockError::WouldBlock) => Err(Error::conflict(
+                "another Caffeine session is already active",
+            )),
             Err(TryLockError::Error(e)) => Err(Error::io("locking the session file", e)),
         }
     }

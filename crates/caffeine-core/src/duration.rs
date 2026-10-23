@@ -200,7 +200,8 @@ impl Serialize for SessionLength {
 impl<'de> Deserialize<'de> for SessionLength {
     fn deserialize<D: Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
         let s = String::deserialize(d)?;
-        s.parse().map_err(|e: Error| serde::de::Error::custom(e.message().to_string()))
+        s.parse()
+            .map_err(|e: Error| serde::de::Error::custom(e.message().to_string()))
     }
 }
 
@@ -232,15 +233,31 @@ mod tests {
 
     #[test]
     fn rejects_ambiguous_or_invalid_input() {
-        for bad in ["", "10", "h", "5x", "1h30", "-5m", "0s", "1.5h", "99999999999999999999h"] {
+        for bad in [
+            "",
+            "10",
+            "h",
+            "5x",
+            "1h30",
+            "-5m",
+            "0s",
+            "1.5h",
+            "99999999999999999999h",
+        ] {
             assert!(parse_duration(bad).is_err(), "{bad:?} should be rejected");
         }
     }
 
     #[test]
     fn session_length_keywords() {
-        assert_eq!("indefinite".parse::<SessionLength>().unwrap(), SessionLength::Indefinite);
-        assert_eq!("Forever".parse::<SessionLength>().unwrap(), SessionLength::Indefinite);
+        assert_eq!(
+            "indefinite".parse::<SessionLength>().unwrap(),
+            SessionLength::Indefinite
+        );
+        assert_eq!(
+            "Forever".parse::<SessionLength>().unwrap(),
+            SessionLength::Indefinite
+        );
         assert_eq!(
             "2h".parse::<SessionLength>().unwrap(),
             SessionLength::Fixed(Duration::from_secs(7_200))
@@ -253,7 +270,10 @@ mod tests {
         assert_eq!(format_duration(Duration::from_secs(5_400)), "1h 30m");
         assert_eq!(format_duration(Duration::from_secs(3_630)), "1h");
         assert_eq!(format_duration(Duration::from_secs(93_600)), "1d 2h");
-        assert_eq!(format_duration_canonical(Duration::from_secs(5_410)), "1h30m10s");
+        assert_eq!(
+            format_duration_canonical(Duration::from_secs(5_410)),
+            "1h30m10s"
+        );
     }
 
     #[test]

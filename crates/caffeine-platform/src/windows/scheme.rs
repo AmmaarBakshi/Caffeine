@@ -15,7 +15,9 @@ use windows_sys::Win32::System::Power::{
     PowerGetActiveScheme, PowerReadACValueIndex, PowerReadDCValueIndex, PowerReadFriendlyName,
     PowerSetActiveScheme, PowerWriteACValueIndex, PowerWriteDCValueIndex,
 };
-use windows_sys::Win32::System::SystemServices::{GUID_LIDCLOSE_ACTION, GUID_SYSTEM_BUTTON_SUBGROUP};
+use windows_sys::Win32::System::SystemServices::{
+    GUID_LIDCLOSE_ACTION, GUID_SYSTEM_BUTTON_SUBGROUP,
+};
 use windows_sys::core::GUID;
 
 use caffeine_core::power::{ActiveAssertion, AwakeGuard, Capability, LidAction};
@@ -51,7 +53,14 @@ fn friendly_name(scheme: &GUID) -> Option<String> {
     let mut size: u32 = 0;
     // SAFETY: first call queries the required buffer size.
     let rc = unsafe {
-        PowerReadFriendlyName(ptr::null_mut(), scheme, ptr::null(), ptr::null(), ptr::null_mut(), &mut size)
+        PowerReadFriendlyName(
+            ptr::null_mut(),
+            scheme,
+            ptr::null(),
+            ptr::null(),
+            ptr::null_mut(),
+            &mut size,
+        )
     };
     if rc != ERROR_SUCCESS || size == 0 {
         return None;
@@ -115,7 +124,13 @@ pub fn write_lid_values(scheme: &GUID, ac: Option<u32>, dc: Option<u32>) -> Resu
     if let Some(ac) = ac {
         // SAFETY: pointers are valid for the call.
         let rc = unsafe {
-            PowerWriteACValueIndex(ptr::null_mut(), scheme, &GUID_SYSTEM_BUTTON_SUBGROUP, &GUID_LIDCLOSE_ACTION, ac)
+            PowerWriteACValueIndex(
+                ptr::null_mut(),
+                scheme,
+                &GUID_SYSTEM_BUTTON_SUBGROUP,
+                &GUID_LIDCLOSE_ACTION,
+                ac,
+            )
         };
         if rc != ERROR_SUCCESS {
             return Err(win_error("PowerWriteACValueIndex(LIDACTION)", rc));
@@ -124,7 +139,13 @@ pub fn write_lid_values(scheme: &GUID, ac: Option<u32>, dc: Option<u32>) -> Resu
     if let Some(dc) = dc {
         // SAFETY: pointers are valid for the call.
         let rc = unsafe {
-            PowerWriteDCValueIndex(ptr::null_mut(), scheme, &GUID_SYSTEM_BUTTON_SUBGROUP, &GUID_LIDCLOSE_ACTION, dc)
+            PowerWriteDCValueIndex(
+                ptr::null_mut(),
+                scheme,
+                &GUID_SYSTEM_BUTTON_SUBGROUP,
+                &GUID_LIDCLOSE_ACTION,
+                dc,
+            )
         };
         if rc != ERROR_SUCCESS {
             return Err(win_error("PowerWriteDCValueIndex(LIDACTION)", rc));
@@ -171,8 +192,12 @@ pub struct LidJournalPayload {
 
 impl LidJournalPayload {
     pub fn from_entry(entry: &JournalEntry) -> Result<LidJournalPayload> {
-        serde_json::from_value(entry.payload.clone())
-            .map_err(|e| Error::failure(format!("restore journal entry {} is corrupt: {e}", entry.id)))
+        serde_json::from_value(entry.payload.clone()).map_err(|e| {
+            Error::failure(format!(
+                "restore journal entry {} is corrupt: {e}",
+                entry.id
+            ))
+        })
     }
 }
 
@@ -180,8 +205,9 @@ impl LidJournalPayload {
 /// applied them are left alone; a note explains what was skipped.
 pub fn restore_entry(entry: &JournalEntry) -> Result<String> {
     let payload = LidJournalPayload::from_entry(entry)?;
-    let scheme = guid_from_string(&payload.scheme)
-        .ok_or_else(|| Error::failure(format!("invalid scheme GUID {} in journal", payload.scheme)))?;
+    let scheme = guid_from_string(&payload.scheme).ok_or_else(|| {
+        Error::failure(format!("invalid scheme GUID {} in journal", payload.scheme))
+    })?;
     let current = read_lid_values(&scheme)?;
     let ac = (current.ac == payload.applied.ac && current.ac != payload.original.ac)
         .then_some(payload.original.ac);
@@ -202,7 +228,11 @@ pub fn restore_entry(entry: &JournalEntry) -> Result<String> {
         "restored lid-close action in power scheme \"{name}\" to plugged in: {}, on battery: {}{}",
         action_from_index(payload.original.ac),
         action_from_index(payload.original.dc),
-        if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) }
+        if notes.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", notes.join("; "))
+        }
     ))
 }
 
@@ -268,7 +298,11 @@ pub struct SessionLidOverride {
 }
 
 impl SessionLidOverride {
-    pub fn apply(journal: &Journal, ac: Option<u32>, dc: Option<u32>) -> Result<SessionLidOverride> {
+    pub fn apply(
+        journal: &Journal,
+        ac: Option<u32>,
+        dc: Option<u32>,
+    ) -> Result<SessionLidOverride> {
         let kind = EntryKind::SessionLidOverride {
             pid: std::process::id(),
         };

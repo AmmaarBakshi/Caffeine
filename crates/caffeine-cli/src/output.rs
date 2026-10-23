@@ -54,7 +54,9 @@ impl Output {
             Some(ColorChoice::Auto) | None => match config_color {
                 ColorMode::Always => true,
                 ColorMode::Never => false,
-                ColorMode::Auto => is_tty && !no_color_env && std::env::var("TERM").map_or(true, |t| t != "dumb"),
+                ColorMode::Auto => {
+                    is_tty && !no_color_env && std::env::var("TERM").map_or(true, |t| t != "dumb")
+                }
             },
         };
         let color = !args.json && wanted(std::io::stdout().is_terminal());
@@ -86,7 +88,6 @@ impl Output {
         self.json
     }
 
-
     pub fn paint(&self, style: Style, text: impl AsRef<str>) -> String {
         paint(self.color, style, text.as_ref())
     }
@@ -114,7 +115,11 @@ impl Output {
 
     /// Key/value row with an aligned label.
     pub fn field(&self, label: &str, value: impl AsRef<str>) {
-        self.line(format!("  {:<14} {}", self.paint(Style::Dim, format!("{label}:")), value.as_ref()));
+        self.line(format!(
+            "  {:<14} {}",
+            self.paint(Style::Dim, format!("{label}:")),
+            value.as_ref()
+        ));
     }
 
     /// A warning: stderr in human mode, collected for JSON mode.
@@ -129,7 +134,11 @@ impl Output {
 
     pub fn note(&self, text: impl AsRef<str>) {
         if !self.json && !self.quiet {
-            eprintln!("{} {}", self.paint_err(Style::Accent, "note:"), text.as_ref());
+            eprintln!(
+                "{} {}",
+                self.paint_err(Style::Accent, "note:"),
+                text.as_ref()
+            );
         }
     }
 
@@ -198,7 +207,10 @@ pub fn confirm(question: &str) -> Option<bool> {
     let _ = std::io::stderr().flush();
     let mut answer = String::new();
     std::io::stdin().read_line(&mut answer).ok()?;
-    Some(matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes"))
+    Some(matches!(
+        answer.trim().to_ascii_lowercase().as_str(),
+        "y" | "yes"
+    ))
 }
 
 /// Enable ANSI escape processing on Windows consoles (no-op elsewhere).

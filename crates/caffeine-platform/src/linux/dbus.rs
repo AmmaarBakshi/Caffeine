@@ -36,7 +36,10 @@ pub fn dbus_error(context: &str, err: zbus::Error) -> Error {
                  local session (not SSH or background sessions) by default",
             );
         }
-        if name.ends_with("ServiceUnknown") || name.ends_with("NameHasNoOwner") || name.ends_with("UnknownMethod") {
+        if name.ends_with("ServiceUnknown")
+            || name.ends_with("NameHasNoOwner")
+            || name.ends_with("UnknownMethod")
+        {
             return Error::unsupported(text);
         }
         return Error::failure(text);
@@ -68,7 +71,13 @@ pub fn name_has_owner(conn: &Connection, name: &str) -> bool {
     .unwrap_or(false)
 }
 
-pub fn get_property(conn: &Connection, dest: &str, path: &str, iface: &str, prop: &str) -> Result<OwnedValue> {
+pub fn get_property(
+    conn: &Connection,
+    dest: &str,
+    path: &str,
+    iface: &str,
+    prop: &str,
+) -> Result<OwnedValue> {
     let reply = conn
         .call_method(
             Some(dest),
@@ -106,7 +115,13 @@ pub struct InhibitorInfo {
 
 pub fn list_inhibitors(conn: &Connection) -> Result<Vec<InhibitorInfo>> {
     let reply = conn
-        .call_method(Some(LOGIND), LOGIND_PATH, Some(LOGIND_MANAGER), "ListInhibitors", &())
+        .call_method(
+            Some(LOGIND),
+            LOGIND_PATH,
+            Some(LOGIND_MANAGER),
+            "ListInhibitors",
+            &(),
+        )
         .map_err(|e| dbus_error("logind ListInhibitors", e))?;
     let rows: Vec<(String, String, String, String, u32, u32)> = reply
         .body()
@@ -114,7 +129,13 @@ pub fn list_inhibitors(conn: &Connection) -> Result<Vec<InhibitorInfo>> {
         .map_err(|e| Error::failure(format!("decoding ListInhibitors: {e}")))?;
     Ok(rows
         .into_iter()
-        .map(|(what, who, why, mode, _uid, pid)| InhibitorInfo { what, who, why, mode, pid })
+        .map(|(what, who, why, mode, _uid, pid)| InhibitorInfo {
+            what,
+            who,
+            why,
+            mode,
+            pid,
+        })
         .collect())
 }
 
@@ -126,7 +147,12 @@ pub struct LogindInhibitor {
 }
 
 impl LogindInhibitor {
-    pub fn acquire(conn: &Connection, what: &'static str, why: &str, capability: Capability) -> Result<LogindInhibitor> {
+    pub fn acquire(
+        conn: &Connection,
+        what: &'static str,
+        why: &str,
+        capability: Capability,
+    ) -> Result<LogindInhibitor> {
         let reply = conn
             .call_method(
                 Some(LOGIND),
@@ -205,8 +231,12 @@ impl DesktopApi {
 
     pub fn describe(self) -> String {
         match self {
-            DesktopApi::GnomeSession { flags } => format!("org.gnome.SessionManager.Inhibit(flags={flags})"),
-            DesktopApi::FreedesktopPowerManagement => "org.freedesktop.PowerManagement.Inhibit".into(),
+            DesktopApi::GnomeSession { flags } => {
+                format!("org.gnome.SessionManager.Inhibit(flags={flags})")
+            }
+            DesktopApi::FreedesktopPowerManagement => {
+                "org.freedesktop.PowerManagement.Inhibit".into()
+            }
             DesktopApi::FreedesktopScreenSaver => "org.freedesktop.ScreenSaver.Inhibit".into(),
         }
     }
@@ -226,7 +256,12 @@ pub struct DesktopInhibitor {
 }
 
 impl DesktopInhibitor {
-    pub fn acquire(conn: Connection, api: DesktopApi, reason: &str, capability: Capability) -> Result<DesktopInhibitor> {
+    pub fn acquire(
+        conn: Connection,
+        api: DesktopApi,
+        reason: &str,
+        capability: Capability,
+    ) -> Result<DesktopInhibitor> {
         let reply = match api {
             DesktopApi::GnomeSession { flags } => conn.call_method(
                 Some(api.bus_name()),

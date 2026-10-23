@@ -87,7 +87,11 @@ impl ConfigFile {
     /// Parse configuration text.
     pub fn from_text(path: &Path, text: &str) -> Result<ConfigFile> {
         let mut document: DocumentMut = text.parse().map_err(|e: toml_edit::TomlError| {
-            Error::config(format!("{} is not valid TOML: {}", path.display(), e.to_string().trim()))
+            Error::config(format!(
+                "{} is not valid TOML: {}",
+                path.display(),
+                e.to_string().trim()
+            ))
         })?;
         let mut notes = Vec::new();
         let mut read_only = None;
@@ -198,7 +202,8 @@ impl ConfigFile {
 
     /// Reset a built-in setting to its default by removing it from the file.
     pub fn unset(&mut self, key: &str) -> Result<()> {
-        settings::find(key).ok_or_else(|| Error::not_found(format!("unknown setting \"{key}\"")))?;
+        settings::find(key)
+            .ok_or_else(|| Error::not_found(format!("unknown setting \"{key}\"")))?;
         self.apply(key, Item::None)
     }
 
@@ -206,9 +211,15 @@ impl ConfigFile {
     /// plugin manager before calling this.
     pub fn set_plugin_settings(&mut self, plugin: &str, table: Table) -> Result<()> {
         if !is_valid_plugin_name(plugin) {
-            return Err(Error::usage(format!("\"{plugin}\" is not a valid plugin name")));
+            return Err(Error::usage(format!(
+                "\"{plugin}\" is not a valid plugin name"
+            )));
         }
-        let item = if table.is_empty() { Item::None } else { Item::Table(table) };
+        let item = if table.is_empty() {
+            Item::None
+        } else {
+            Item::Table(table)
+        };
         self.apply(&format!("plugins.settings.{plugin}"), item)
     }
 
@@ -242,7 +253,9 @@ impl ConfigFile {
 
     fn ensure_writable(&self) -> Result<()> {
         match &self.read_only {
-            Some(reason) => Err(Error::config(format!("refusing to modify configuration: {reason}"))),
+            Some(reason) => Err(Error::config(format!(
+                "refusing to modify configuration: {reason}"
+            ))),
             None => Ok(()),
         }
     }
@@ -310,7 +323,8 @@ fn migrate(doc: &mut DocumentMut, from: u32) -> Vec<String> {
     if from < SCHEMA_VERSION {
         let mut decorated = toml_edit::value(i64::from(SCHEMA_VERSION));
         if let Some(v) = decorated.as_value_mut() {
-            v.decor_mut().set_suffix("  # added by caffeine (schema migration)");
+            v.decor_mut()
+                .set_suffix("  # added by caffeine (schema migration)");
         }
         doc.insert("schema_version", decorated);
     }
@@ -336,7 +350,9 @@ fn set_path(doc: &mut DocumentMut, key: &str, item: Item) -> Result<()> {
             .get_mut(part)
             .and_then(Item::as_table_mut)
             .ok_or_else(|| {
-                Error::config(format!("cannot set \"{key}\": \"{part}\" is not a table in the file"))
+                Error::config(format!(
+                    "cannot set \"{key}\": \"{part}\" is not a table in the file"
+                ))
             })?;
     }
     if item.is_none() {
@@ -369,21 +385,29 @@ pub fn parse_setting_value(def: &SettingDef, raw: &str) -> Result<Item> {
             .collect()
     };
     Ok(match def.kind {
-        SettingKind::Bool => toml_edit::value(parse_bool(raw).ok_or_else(|| {
-            bad(format!("\"{raw}\" is not a boolean (use true or false)"))
-        })?),
+        SettingKind::Bool => toml_edit::value(
+            parse_bool(raw)
+                .ok_or_else(|| bad(format!("\"{raw}\" is not a boolean (use true or false)")))?,
+        ),
         SettingKind::Choice(choices) => {
             if !choices.contains(&raw) {
-                return Err(bad(format!("\"{raw}\" (expected one of: {})", choices.join(", "))));
+                return Err(bad(format!(
+                    "\"{raw}\" (expected one of: {})",
+                    choices.join(", ")
+                )));
             }
             toml_edit::value(raw)
         }
         SettingKind::Length => {
-            let len: SessionLength = raw.parse().map_err(|e: Error| bad(e.message().to_string()))?;
+            let len: SessionLength = raw
+                .parse()
+                .map_err(|e: Error| bad(e.message().to_string()))?;
             toml_edit::value(len.to_string())
         }
         SettingKind::Integer { min, max } => {
-            let n: i64 = raw.parse().map_err(|_| bad(format!("\"{raw}\" is not an integer")))?;
+            let n: i64 = raw
+                .parse()
+                .map_err(|_| bad(format!("\"{raw}\" is not an integer")))?;
             if n < min || n > max {
                 return Err(bad(format!("{n} is outside {min}..={max}")));
             }
@@ -432,7 +456,11 @@ fn display_json(v: &serde_json::Value) -> String {
     match v {
         serde_json::Value::Null => String::new(),
         serde_json::Value::String(s) => s.clone(),
-        serde_json::Value::Array(items) => items.iter().map(display_json).collect::<Vec<_>>().join(", "),
+        serde_json::Value::Array(items) => items
+            .iter()
+            .map(display_json)
+            .collect::<Vec<_>>()
+            .join(", "),
         other => other.to_string(),
     }
 }
@@ -441,7 +469,11 @@ fn display_json(v: &serde_json::Value) -> String {
 pub fn unknown_keys(doc: &DocumentMut) -> Vec<String> {
     fn walk(prefix: &str, table: &dyn toml_edit::TableLike, out: &mut Vec<String>) {
         for (key, item) in table.iter() {
-            let path = if prefix.is_empty() { key.to_string() } else { format!("{prefix}.{key}") };
+            let path = if prefix.is_empty() {
+                key.to_string()
+            } else {
+                format!("{prefix}.{key}")
+            };
             if !settings::is_known_path(&path) {
                 out.push(path);
                 continue;
@@ -460,7 +492,16 @@ pub fn unknown_keys(doc: &DocumentMut) -> Vec<String> {
 }
 
 /// Key fragments treated as secrets when printing plugin settings.
-const SECRET_HINTS: &[&str] = &["token", "password", "passwd", "secret", "api_key", "apikey", "credential", "private_key"];
+const SECRET_HINTS: &[&str] = &[
+    "token",
+    "password",
+    "passwd",
+    "secret",
+    "api_key",
+    "apikey",
+    "credential",
+    "private_key",
+];
 
 /// The effective configuration as JSON with secrets redacted.
 ///

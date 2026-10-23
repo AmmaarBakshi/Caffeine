@@ -51,15 +51,25 @@ struct Assertion {
 
 impl Assertion {
     fn create(kind: &'static str, reason: &str, capability: Capability) -> Result<Assertion> {
-        let kind_cf = ffi::cf_string(kind).ok_or_else(|| Error::failure("CFStringCreate failed"))?;
-        let name_cf = ffi::cf_string(reason).ok_or_else(|| Error::failure("CFStringCreate failed"))?;
+        let kind_cf =
+            ffi::cf_string(kind).ok_or_else(|| Error::failure("CFStringCreate failed"))?;
+        let name_cf =
+            ffi::cf_string(reason).ok_or_else(|| Error::failure("CFStringCreate failed"))?;
         let mut id: ffi::IOPMAssertionID = 0;
         // SAFETY: both CFStrings are valid for the call; `id` is an out-param.
         let rc = unsafe {
-            ffi::IOPMAssertionCreateWithName(kind_cf.as_ptr(), ffi::kIOPMAssertionLevelOn, name_cf.as_ptr(), &mut id)
+            ffi::IOPMAssertionCreateWithName(
+                kind_cf.as_ptr(),
+                ffi::kIOPMAssertionLevelOn,
+                name_cf.as_ptr(),
+                &mut id,
+            )
         };
         if rc != ffi::kIOReturnSuccess {
-            return Err(io_error(&format!("IOPMAssertionCreateWithName({kind})"), rc));
+            return Err(io_error(
+                &format!("IOPMAssertionCreateWithName({kind})"),
+                rc,
+            ));
         }
         Ok(Assertion {
             id,
@@ -77,7 +87,10 @@ impl Assertion {
         // SAFETY: releasing an assertion we created, once.
         let rc = unsafe { ffi::IOPMAssertionRelease(self.id) };
         if rc != ffi::kIOReturnSuccess {
-            return Err(io_error(&format!("IOPMAssertionRelease({})", self.kind), rc));
+            return Err(io_error(
+                &format!("IOPMAssertionRelease({})", self.kind),
+                rc,
+            ));
         }
         Ok(())
     }
@@ -119,7 +132,13 @@ fn os_version() -> Option<String> {
     let mut len = buf.len();
     // SAFETY: buffer and length are valid; no new value is written.
     let rc = unsafe {
-        libc::sysctlbyname(name.as_ptr(), buf.as_mut_ptr().cast(), &mut len, std::ptr::null_mut(), 0)
+        libc::sysctlbyname(
+            name.as_ptr(),
+            buf.as_mut_ptr().cast(),
+            &mut len,
+            std::ptr::null_mut(),
+            0,
+        )
     };
     if rc != 0 {
         return None;
@@ -176,11 +195,23 @@ impl PowerBackend for MacBackend {
                 "reports whether closing the lid will sleep the Mac right now (no configurable action exists)",
             ));
         } else {
-            caps.push(CapabilityStatus::unsupported(Capability::LidState, "no lid (desktop Mac)"));
-            caps.push(CapabilityStatus::unsupported(Capability::LidPolicyRead, "no lid (desktop Mac)"));
+            caps.push(CapabilityStatus::unsupported(
+                Capability::LidState,
+                "no lid (desktop Mac)",
+            ));
+            caps.push(CapabilityStatus::unsupported(
+                Capability::LidPolicyRead,
+                "no lid (desktop Mac)",
+            ));
         }
-        caps.push(CapabilityStatus::unsupported(Capability::LidPolicyWrite, UNSUPPORTED_LID_WRITE));
-        caps.push(CapabilityStatus::unsupported(Capability::LidSessionOverride, UNSUPPORTED_LID_WRITE));
+        caps.push(CapabilityStatus::unsupported(
+            Capability::LidPolicyWrite,
+            UNSUPPORTED_LID_WRITE,
+        ));
+        caps.push(CapabilityStatus::unsupported(
+            Capability::LidSessionOverride,
+            UNSUPPORTED_LID_WRITE,
+        ));
         caps.push(CapabilityStatus::new(
             Capability::PowerSource,
             Support::Supported,
@@ -224,7 +255,11 @@ impl PowerBackend for MacBackend {
     fn lid_status(&self) -> Result<LidStatus> {
         Ok(match clamshell_state() {
             Some(closed) => LidStatus {
-                state: if closed { LidState::Closed } else { LidState::Open },
+                state: if closed {
+                    LidState::Closed
+                } else {
+                    LidState::Open
+                },
                 source: "IOPMrootDomain AppleClamshellState".into(),
                 notes: vec![],
             },
@@ -290,7 +325,9 @@ impl PowerBackend for MacBackend {
                     if desc.is_null() {
                         continue;
                     }
-                    if ffi::to_string(ffi::dict_get(desc, "Type")).as_deref() != Some("InternalBattery") {
+                    if ffi::to_string(ffi::dict_get(desc, "Type")).as_deref()
+                        != Some("InternalBattery")
+                    {
                         continue;
                     }
                     if ffi::to_bool(ffi::dict_get(desc, "Is Present")) == Some(false) {
@@ -314,18 +351,30 @@ impl PowerBackend for MacBackend {
 
     fn diagnose(&self) -> Vec<DiagnosticCheck> {
         let mut checks = Vec::new();
-        match Assertion::create("PreventUserIdleSystemSleep", "caffeine doctor probe", Capability::IdleSleep)
-            .and_then(|a| Box::new(a).release())
+        match Assertion::create(
+            "PreventUserIdleSystemSleep",
+            "caffeine doctor probe",
+            Capability::IdleSleep,
+        )
+        .and_then(|a| Box::new(a).release())
         {
             Ok(()) => checks.push(DiagnosticCheck::new(
                 "macos.assertion",
                 CheckStatus::Ok,
                 "IOKit created and released a PreventUserIdleSystemSleep assertion",
             )),
-            Err(e) => checks.push(DiagnosticCheck::new("macos.assertion", CheckStatus::Fail, e.to_string())),
+            Err(e) => checks.push(DiagnosticCheck::new(
+                "macos.assertion",
+                CheckStatus::Fail,
+                e.to_string(),
+            )),
         }
         match (clamshell_state(), clamshell_causes_sleep()) {
-            (None, _) => checks.push(DiagnosticCheck::new("macos.lid", CheckStatus::Info, "no lid (desktop Mac)")),
+            (None, _) => checks.push(DiagnosticCheck::new(
+                "macos.lid",
+                CheckStatus::Info,
+                "no lid (desktop Mac)",
+            )),
             (Some(closed), causes) => checks.push(DiagnosticCheck::new(
                 "macos.lid",
                 CheckStatus::Info,

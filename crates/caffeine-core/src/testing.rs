@@ -108,7 +108,9 @@ impl PowerBackend for FakeBackend {
             },
             capabilities: Capability::ALL
                 .iter()
-                .map(|c| CapabilityStatus::new(*c, Support::Supported, Some("fake"), "test backend"))
+                .map(|c| {
+                    CapabilityStatus::new(*c, Support::Supported, Some("fake"), "test backend")
+                })
                 .collect(),
         }
     }
@@ -151,6 +153,10 @@ impl PowerBackend for FakeBackend {
     }
 
     fn diagnose(&self) -> Vec<DiagnosticCheck> {
-        vec![DiagnosticCheck::new("fake", CheckStatus::Ok, "fake backend")]
+        vec![DiagnosticCheck::new(
+            "fake",
+            CheckStatus::Ok,
+            "fake backend",
+        )]
     }
 }

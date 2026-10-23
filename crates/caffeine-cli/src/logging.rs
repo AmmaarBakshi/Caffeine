@@ -31,7 +31,11 @@ impl Log for Logger {
             return;
         }
         if self.stderr {
-            eprintln!("caffeine: {}: {}", record.level().as_str().to_ascii_lowercase(), record.args());
+            eprintln!(
+                "caffeine: {}: {}",
+                record.level().as_str().to_ascii_lowercase(),
+                record.args()
+            );
         }
         if let Some(file) = &self.file
             && let Ok(mut f) = file.lock()

@@ -67,8 +67,15 @@ fn stop_request_ends_session_and_cleans_up() {
     assert_eq!(record.end, EndReason::Stopped);
     assert_eq!(ready.unwrap().assertions.len(), 1);
     assert_eq!(f.store.probe().unwrap(), Probe::Inactive);
-    assert_eq!(f.backend.snapshot(|s| s.held()), 0, "guard must be released");
-    assert_eq!(f.store.read_last_session().unwrap().unwrap().end, EndReason::Stopped);
+    assert_eq!(
+        f.backend.snapshot(|s| s.held()),
+        0,
+        "guard must be released"
+    );
+    assert_eq!(
+        f.store.read_last_session().unwrap().unwrap().end,
+        EndReason::Stopped
+    );
 }
 
 #[test]
@@ -130,7 +137,8 @@ fn termination_flag_ends_session() {
 #[test]
 fn acquire_failure_leaves_no_state() {
     let f = fixture();
-    f.backend.update(|s| s.fail_acquire = Some("denied by policy".into()));
+    f.backend
+        .update(|s| s.fail_acquire = Some("denied by policy".into()));
     let (result, ready) = run_host(
         &f,
         options(SessionLength::Indefinite),
@@ -147,7 +155,8 @@ fn acquire_failure_leaves_no_state() {
 #[test]
 fn release_failure_is_recorded_not_hidden() {
     let f = fixture();
-    f.backend.update(|s| s.fail_release = Some("PowerClearRequest failed".into()));
+    f.backend
+        .update(|s| s.fail_release = Some("PowerClearRequest failed".into()));
     let (result, _) = run_host(
         &f,
         options(SessionLength::Indefinite),
@@ -155,7 +164,10 @@ fn release_failure_is_recorded_not_hidden() {
         || Some(EndReason::Stopped),
     );
     let record = result.unwrap();
-    assert_eq!(record.release_error.as_deref(), Some("PowerClearRequest failed"));
+    assert_eq!(
+        record.release_error.as_deref(),
+        Some("PowerClearRequest failed")
+    );
 }
 
 #[test]
@@ -169,7 +181,11 @@ fn second_host_is_rejected_while_first_runs() {
         || None,
     );
     assert_eq!(result.unwrap_err().kind(), crate::ErrorKind::Conflict);
-    assert_eq!(f.backend.snapshot(|s| s.acquired), 0, "nothing acquired on conflict");
+    assert_eq!(
+        f.backend.snapshot(|s| s.acquired),
+        0,
+        "nothing acquired on conflict"
+    );
     drop(lock);
 }
 

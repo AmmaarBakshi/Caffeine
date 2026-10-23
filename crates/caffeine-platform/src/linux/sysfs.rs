@@ -40,7 +40,8 @@ pub fn power_source(root: &Path) -> Option<PowerSource> {
                     continue;
                 }
                 batteries += 1;
-                if let Some(c) = read_trim(&p.join("capacity")).and_then(|c| c.parse::<u32>().ok()) {
+                if let Some(c) = read_trim(&p.join("capacity")).and_then(|c| c.parse::<u32>().ok())
+                {
                     capacity_sum += c.min(100);
                     capacity_count += 1;
                 }
@@ -104,7 +105,9 @@ pub fn input_lid_switch_present(root: &Path) -> bool {
         read_trim(&e.path().join("capabilities/sw"))
             .and_then(|mask| {
                 // The mask is space-separated hex words, most significant first.
-                mask.split_whitespace().last().and_then(|w| u64::from_str_radix(w, 16).ok())
+                mask.split_whitespace()
+                    .last()
+                    .and_then(|w| u64::from_str_radix(w, 16).ok())
             })
             .is_some_and(|low| low & 1 == 1)
     })
@@ -166,12 +169,24 @@ mod tests {
         write(r, "sys/class/power_supply/BAT0/type", "Battery\n");
         write(r, "sys/class/power_supply/BAT0/capacity", "42\n");
         write(r, "sys/class/power_supply/BAT0/status", "Discharging\n");
-        write(r, "sys/class/power_supply/hidpp_battery_0/type", "Battery\n");
-        write(r, "sys/class/power_supply/hidpp_battery_0/scope", "Device\n");
+        write(
+            r,
+            "sys/class/power_supply/hidpp_battery_0/type",
+            "Battery\n",
+        );
+        write(
+            r,
+            "sys/class/power_supply/hidpp_battery_0/scope",
+            "Device\n",
+        );
         write(r, "sys/class/power_supply/hidpp_battery_0/capacity", "5\n");
         let ps = power_source(r).unwrap();
         assert_eq!(ps.kind, PowerSourceKind::Battery);
-        assert_eq!(ps.battery_percent, Some(42), "peripheral batteries are ignored");
+        assert_eq!(
+            ps.battery_percent,
+            Some(42),
+            "peripheral batteries are ignored"
+        );
         assert_eq!(ps.charging, Some(false));
     }
 
@@ -218,10 +233,21 @@ mod tests {
     fn system_facts() {
         let t = tempfile::tempdir().unwrap();
         let r = t.path();
-        write(r, "etc/os-release", "NAME=Fedora\nPRETTY_NAME=\"Fedora Linux 41 (Workstation Edition)\"\n");
-        write(r, "proc/sys/kernel/osrelease", "6.6.87.2-microsoft-standard-WSL2\n");
+        write(
+            r,
+            "etc/os-release",
+            "NAME=Fedora\nPRETTY_NAME=\"Fedora Linux 41 (Workstation Edition)\"\n",
+        );
+        write(
+            r,
+            "proc/sys/kernel/osrelease",
+            "6.6.87.2-microsoft-standard-WSL2\n",
+        );
         write(r, "proc/1/comm", "init\n");
-        assert_eq!(distribution(r).unwrap(), "Fedora Linux 41 (Workstation Edition)");
+        assert_eq!(
+            distribution(r).unwrap(),
+            "Fedora Linux 41 (Workstation Edition)"
+        );
         assert!(is_wsl(r));
         assert_eq!(init_system(r), "init");
         fs::create_dir_all(r.join("run/systemd/system")).unwrap();

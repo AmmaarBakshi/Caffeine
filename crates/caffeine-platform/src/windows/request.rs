@@ -7,9 +7,9 @@
 
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
 use windows_sys::Win32::System::Power::{
-    ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED, POWER_REQUEST_TYPE,
-    PowerClearRequest, PowerCreateRequest, PowerRequestDisplayRequired,
-    PowerRequestSystemRequired, PowerSetRequest, SetThreadExecutionState,
+    ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED, POWER_REQUEST_TYPE, PowerClearRequest,
+    PowerCreateRequest, PowerRequestDisplayRequired, PowerRequestSystemRequired, PowerSetRequest,
+    SetThreadExecutionState,
 };
 use windows_sys::Win32::System::Threading::{
     POWER_REQUEST_CONTEXT_SIMPLE_STRING, REASON_CONTEXT, REASON_CONTEXT_0,
@@ -61,7 +61,10 @@ impl PowerRequest {
     pub fn set(&mut self, kind: POWER_REQUEST_TYPE) -> Result<()> {
         // SAFETY: the handle is a live power request.
         if unsafe { PowerSetRequest(self.handle, kind) } == 0 {
-            return Err(last_error(&format!("PowerSetRequest({})", request_name(kind))));
+            return Err(last_error(&format!(
+                "PowerSetRequest({})",
+                request_name(kind)
+            )));
         }
         self.active.push(kind);
         Ok(())
@@ -181,7 +184,9 @@ impl ExecutionState {
         }
         // SAFETY: no pointers involved.
         if unsafe { SetThreadExecutionState(ES_CONTINUOUS) } == 0 {
-            return Err(Error::failure("SetThreadExecutionState(ES_CONTINUOUS) failed"));
+            return Err(Error::failure(
+                "SetThreadExecutionState(ES_CONTINUOUS) failed",
+            ));
         }
         Ok(())
     }

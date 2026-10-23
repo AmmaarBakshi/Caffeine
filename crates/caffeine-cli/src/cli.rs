@@ -236,7 +236,8 @@ mod tests {
         }
         let cli = Cli::try_parse_from(["caffeine", "--config"]).unwrap();
         assert!(cli.config_editor);
-        let cli = Cli::try_parse_from(["caffeine", "run", "--", "cargo", "build", "--release"]).unwrap();
+        let cli =
+            Cli::try_parse_from(["caffeine", "run", "--", "cargo", "build", "--release"]).unwrap();
         match cli.command {
             Some(Command::Run(a)) => assert_eq!(a.command, ["cargo", "build", "--release"]),
             other => panic!("unexpected {other:?}"),

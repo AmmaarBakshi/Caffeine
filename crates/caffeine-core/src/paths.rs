@@ -79,7 +79,10 @@ impl Paths {
             .map(|d| d.join("caffeine"))
             .unwrap_or_else(|| data_dir.join("run"));
         let log_dir = if cfg!(target_os = "macos") {
-            base.home_dir().join("Library").join("Logs").join("caffeine")
+            base.home_dir()
+                .join("Library")
+                .join("Logs")
+                .join("caffeine")
         } else {
             base.state_dir()
                 .map(|d| d.join("caffeine"))
@@ -131,11 +134,20 @@ mod tests {
     fn under_root_is_self_contained() {
         let root = Path::new("/tmp/caffeine-test");
         let p = Paths::under(root);
-        for dir in [&p.config_dir, &p.data_dir, &p.runtime_dir, &p.log_dir, &p.plugin_dir] {
+        for dir in [
+            &p.config_dir,
+            &p.data_dir,
+            &p.runtime_dir,
+            &p.log_dir,
+            &p.plugin_dir,
+        ] {
             assert!(dir.starts_with(root));
         }
         assert_eq!(p.config_file.file_name().unwrap(), CONFIG_FILE_NAME);
-        assert_ne!(p.runtime_dir, p.data_dir, "runtime state must be separate from durable data");
+        assert_ne!(
+            p.runtime_dir, p.data_dir,
+            "runtime state must be separate from durable data"
+        );
     }
 
     #[test]

@@ -66,7 +66,11 @@ fn unversioned_file_is_migrated_in_memory_only() {
     assert!(cfg.to_text().contains("schema_version = 1"));
     assert!(cfg.notes().iter().any(|n| n.contains("schema_version")));
     // Nothing is written until the caller saves.
-    assert!(!std::fs::read_to_string(&path).unwrap().contains("schema_version"));
+    assert!(
+        !std::fs::read_to_string(&path)
+            .unwrap()
+            .contains("schema_version")
+    );
 }
 
 #[test]
@@ -132,8 +136,13 @@ fn set_creates_missing_tables_and_cross_validates() {
 fn lists_and_paths() {
     let (_d, path) = tmp_path();
     let mut cfg = ConfigFile::from_text(&path, "").unwrap();
-    cfg.set("advanced.experimental", "session-lid-override").unwrap();
-    assert!(cfg.config().advanced.experimental_enabled("session-lid-override"));
+    cfg.set("advanced.experimental", "session-lid-override")
+        .unwrap();
+    assert!(
+        cfg.config()
+            .advanced
+            .experimental_enabled("session-lid-override")
+    );
     assert!(cfg.set("advanced.experimental", "warp").is_err());
     assert!(cfg.set("advanced.log_file", "relative.log").is_err());
     cfg.set("advanced.log_file", "").unwrap();
@@ -151,7 +160,11 @@ fn save_is_atomic_and_detects_external_changes() {
     assert_eq!(reloaded.config().general.log_level, LogLevel::Debug);
 
     // Another program edits the file; our stale copy must not clobber it.
-    std::fs::write(&path, "schema_version = 1\n[general]\nlog_level = \"trace\"\n").unwrap();
+    std::fs::write(
+        &path,
+        "schema_version = 1\n[general]\nlog_level = \"trace\"\n",
+    )
+    .unwrap();
     cfg.set("general.log_level", "error").unwrap();
     let err = cfg.save().unwrap_err();
     assert_eq!(err.kind(), crate::ErrorKind::Conflict);
@@ -178,7 +191,10 @@ fn load_or_default_never_overwrites_broken_file() {
     assert!(err.is_some());
     assert_eq!(cfg.config(), &Config::default());
     assert!(cfg.save().is_err());
-    assert_eq!(std::fs::read_to_string(&path).unwrap(), "this is = = not toml");
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        "this is = = not toml"
+    );
 }
 
 #[test]
@@ -187,7 +203,10 @@ fn reset_backs_up_existing_file() {
     std::fs::write(&path, "broken = = =").unwrap();
     let backup = ConfigFile::reset(&path).unwrap().unwrap();
     assert_eq!(std::fs::read_to_string(backup).unwrap(), "broken = = =");
-    assert_eq!(ConfigFile::load(&path).unwrap().config(), &Config::default());
+    assert_eq!(
+        ConfigFile::load(&path).unwrap().config(),
+        &Config::default()
+    );
 }
 
 #[test]

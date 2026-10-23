@@ -9,7 +9,9 @@ use std::ptr;
 use std::time::Duration;
 
 use windows_sys::Win32::Foundation::{CloseHandle, ERROR_SUCCESS, HANDLE};
-use windows_sys::Win32::Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation};
+use windows_sys::Win32::Security::{
+    GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation,
+};
 use windows_sys::Win32::System::Power::{
     GetPwrCapabilities, GetSystemPowerStatus, SYSTEM_POWER_CAPABILITIES, SYSTEM_POWER_STATUS,
 };
@@ -239,7 +241,11 @@ impl PowerBackend for WindowsBackend {
             Capability::PowerSource,
             Support::Supported,
             Some("GetSystemPowerStatus"),
-            if self.batteries_present { "AC line and battery status" } else { "AC line status (no battery)" },
+            if self.batteries_present {
+                "AC line and battery status"
+            } else {
+                "AC line status (no battery)"
+            },
         ));
         caps.push(CapabilityStatus::new(
             Capability::ResumeDetection,
@@ -262,10 +268,9 @@ impl PowerBackend for WindowsBackend {
                     req.idle_sleep,
                     req.display,
                 )?)),
-                Mechanism::ExecutionState => guard.push(Box::new(request::ExecutionState::acquire(
-                    req.idle_sleep,
-                    req.display,
-                )?)),
+                Mechanism::ExecutionState => guard.push(Box::new(
+                    request::ExecutionState::acquire(req.idle_sleep, req.display)?,
+                )),
             }
         }
         if req.lid != LidSessionMode::System {
@@ -282,7 +287,11 @@ impl PowerBackend for WindowsBackend {
                 ));
             }
             let dc = (req.lid == LidSessionMode::KeepAwake).then_some(0);
-            guard.push(Box::new(scheme::SessionLidOverride::apply(&self.journal, Some(0), dc)?));
+            guard.push(Box::new(scheme::SessionLidOverride::apply(
+                &self.journal,
+                Some(0),
+                dc,
+            )?));
         }
         Ok(Box::new(guard))
     }
@@ -337,13 +346,25 @@ impl PowerBackend for WindowsBackend {
 
     fn set_lid_policy(&self, change: &LidPolicyChange) -> Result<LidPolicy> {
         if !self.lid_present {
-            return Err(Error::unsupported("this machine has no lid; refusing to change the lid action"));
+            return Err(Error::unsupported(
+                "this machine has no lid; refusing to change the lid action",
+            ));
         }
         if change.is_empty() {
-            return Err(Error::usage("nothing to change (pass --ac and/or --battery)"));
+            return Err(Error::usage(
+                "nothing to change (pass --ac and/or --battery)",
+            ));
         }
-        let ac = change.on_ac.as_ref().map(scheme::index_from_action).transpose()?;
-        let dc = change.on_battery.as_ref().map(scheme::index_from_action).transpose()?;
+        let ac = change
+            .on_ac
+            .as_ref()
+            .map(scheme::index_from_action)
+            .transpose()?;
+        let dc = change
+            .on_battery
+            .as_ref()
+            .map(scheme::index_from_action)
+            .transpose()?;
         scheme::apply_with_journal(&self.journal, EntryKind::PersistentLidPolicy, ac, dc)?;
         self.lid_policy()
     }
@@ -361,7 +382,8 @@ impl PowerBackend for WindowsBackend {
         if unsafe { GetSystemPowerStatus(&mut status) } == 0 {
             return Err(util::last_error("GetSystemPowerStatus"));
         }
-        let no_battery = status.BatteryFlag == 128 || status.BatteryFlag == 255 && !self.batteries_present;
+        let no_battery =
+            status.BatteryFlag == 128 || status.BatteryFlag == 255 && !self.batteries_present;
         let kind = match status.ACLineStatus {
             1 => PowerSourceKind::Ac,
             0 => PowerSourceKind::Battery,
@@ -372,7 +394,8 @@ impl PowerBackend for WindowsBackend {
             battery_present: !no_battery,
             battery_percent: (!no_battery && status.BatteryLifePercent <= 100)
                 .then_some(status.BatteryLifePercent),
-            charging: (!no_battery && status.BatteryFlag != 255).then_some(status.BatteryFlag & 8 != 0),
+            charging: (!no_battery && status.BatteryFlag != 255)
+                .then_some(status.BatteryFlag & 8 != 0),
         })
     }
 
@@ -404,7 +427,11 @@ impl PowerBackend for WindowsBackend {
                     p.source
                 ),
             )),
-            Err(e) => checks.push(DiagnosticCheck::new("windows.lid-policy", CheckStatus::Warn, e.to_string())),
+            Err(e) => checks.push(DiagnosticCheck::new(
+                "windows.lid-policy",
+                CheckStatus::Warn,
+                e.to_string(),
+            )),
         }
         if self.modern_standby {
             checks.push(
@@ -461,7 +488,12 @@ impl PowerBackend for WindowsBackend {
         let pending = self.pending_recovery()?;
         let mut restored = Vec::new();
         for item in pending {
-            let Some(entry) = self.journal.entries()?.into_iter().find(|e| e.id == item.id) else {
+            let Some(entry) = self
+                .journal
+                .entries()?
+                .into_iter()
+                .find(|e| e.id == item.id)
+            else {
                 continue;
             };
             restored.push(scheme::restore_entry(&entry)?);
@@ -511,7 +543,10 @@ mod tests {
         let mut opts = BackendOptions::new(dir.path().to_path_buf());
         opts.backend = "execution-state".into();
         let b = WindowsBackend::new(&opts).unwrap();
-        b.acquire(&AwakeRequest::default()).unwrap().release().unwrap();
+        b.acquire(&AwakeRequest::default())
+            .unwrap()
+            .release()
+            .unwrap();
     }
 
     #[test]
@@ -529,7 +564,10 @@ mod tests {
             lid: LidSessionMode::KeepAwake,
             ..AwakeRequest::default()
         };
-        let err = b.acquire(&req).err().expect("must not succeed without opt-in");
+        let err = b
+            .acquire(&req)
+            .err()
+            .expect("must not succeed without opt-in");
         assert_eq!(err.kind(), caffeine_core::ErrorKind::Unsupported);
     }
 

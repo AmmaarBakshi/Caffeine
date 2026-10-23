@@ -28,7 +28,8 @@ pub fn write_atomic(path: &Path, contents: &[u8], backup: bool) -> Result<()> {
 
     if backup && path.exists() {
         let bak = backup_path(path);
-        fs::copy(path, &bak).map_err(|e| Error::io(format!("backing up to {}", bak.display()), e))?;
+        fs::copy(path, &bak)
+            .map_err(|e| Error::io(format!("backing up to {}", bak.display()), e))?;
     }
 
     let tmp = parent.join(format!(

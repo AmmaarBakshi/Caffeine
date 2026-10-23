@@ -590,7 +590,10 @@ mod tests {
     fn lid_action_parsing_accepts_platform_spellings() {
         assert_eq!("ignore".parse::<LidAction>().unwrap(), LidAction::DoNothing);
         assert_eq!("suspend".parse::<LidAction>().unwrap(), LidAction::Sleep);
-        assert_eq!("shutdown".parse::<LidAction>().unwrap(), LidAction::ShutDown);
+        assert_eq!(
+            "shutdown".parse::<LidAction>().unwrap(),
+            LidAction::ShutDown
+        );
         assert!("explode".parse::<LidAction>().is_err());
     }
 
@@ -603,7 +606,11 @@ mod tests {
         };
         assert_eq!(
             req.required_capabilities(),
-            vec![Capability::IdleSleep, Capability::DisplaySleep, Capability::LidSessionOverride]
+            vec![
+                Capability::IdleSleep,
+                Capability::DisplaySleep,
+                Capability::LidSessionOverride
+            ]
         );
         let none = AwakeRequest {
             idle_sleep: false,

@@ -18,7 +18,10 @@ pub fn from_wide(buf: &[u16]) -> String {
 
 /// Build an error from a Win32 error code, classifying access denial.
 pub fn win_error(context: &str, code: WIN32_ERROR) -> Error {
-    let message = format!("{context} failed: {}", std::io::Error::from_raw_os_error(code as i32));
+    let message = format!(
+        "{context} failed: {}",
+        std::io::Error::from_raw_os_error(code as i32)
+    );
     let err = if code == ERROR_ACCESS_DENIED {
         Error::permission(message).with_hint(
             "Windows denied the change; it may be restricted by group policy or require an \
@@ -46,11 +49,22 @@ pub fn guid_to_u128(g: &GUID) -> u128 {
 
 pub fn guid_to_string(g: &GUID) -> String {
     let v = format!("{:032x}", guid_to_u128(g));
-    format!("{}-{}-{}-{}-{}", &v[0..8], &v[8..12], &v[12..16], &v[16..20], &v[20..32])
+    format!(
+        "{}-{}-{}-{}-{}",
+        &v[0..8],
+        &v[8..12],
+        &v[12..16],
+        &v[16..20],
+        &v[20..32]
+    )
 }
 
 pub fn guid_from_string(s: &str) -> Option<GUID> {
-    let hex: String = s.trim_matches(|c| c == '{' || c == '}').chars().filter(|c| *c != '-').collect();
+    let hex: String = s
+        .trim_matches(|c| c == '{' || c == '}')
+        .chars()
+        .filter(|c| *c != '-')
+        .collect();
     if hex.len() != 32 {
         return None;
     }
@@ -66,7 +80,10 @@ mod tests {
         let g = GUID::from_u128(0x5ca83367_6e45_459f_a27b_476b1d01c936);
         let s = guid_to_string(&g);
         assert_eq!(s, "5ca83367-6e45-459f-a27b-476b1d01c936");
-        assert_eq!(guid_to_u128(&guid_from_string(&s).unwrap()), guid_to_u128(&g));
+        assert_eq!(
+            guid_to_u128(&guid_from_string(&s).unwrap()),
+            guid_to_u128(&g)
+        );
         assert!(guid_from_string("nope").is_none());
     }
 

@@ -9,13 +9,17 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use caffeine_core::config::{BatteryAction, ConflictPolicy, DisplayPolicy, ExpireAction, LogLevel, Notifications};
+use caffeine_core::config::{
+    BatteryAction, ConflictPolicy, DisplayPolicy, ExpireAction, LogLevel, Notifications,
+};
 use caffeine_core::duration::{SessionLength, format_duration};
 use caffeine_core::error::ErrorReport;
-use caffeine_core::power::{AwakeRequest, Capability, LidSessionMode, PowerSourceKind, RecoveryItem};
+use caffeine_core::power::{
+    AwakeRequest, Capability, LidSessionMode, PowerSourceKind, RecoveryItem,
+};
 use caffeine_core::session::{
-    BatteryWatch, EndReason, HostOptions, Probe, SessionHost, SessionMode, SessionRecord, SessionState,
-    SessionStore,
+    BatteryWatch, EndReason, HostOptions, Probe, SessionHost, SessionMode, SessionRecord,
+    SessionState, SessionStore,
 };
 use caffeine_core::time::{format_relative, format_rfc3339, unix_now};
 use caffeine_core::{Error, Result};
@@ -90,8 +94,14 @@ fn preflight(ctx: &Ctx, plan: &Plan) -> Result<Vec<String>> {
     let report = backend.capabilities();
     for cap in plan.request.required_capabilities() {
         if !report.is_usable(cap) {
-            let detail = report.get(cap).map(|c| c.detail.clone()).unwrap_or_default();
-            let mut err = Error::unsupported(format!("{} is not available here: {detail}", cap.description()));
+            let detail = report
+                .get(cap)
+                .map(|c| c.detail.clone())
+                .unwrap_or_default();
+            let mut err = Error::unsupported(format!(
+                "{} is not available here: {detail}",
+                cap.description()
+            ));
             if report.support(cap) == caffeine_core::power::Support::RequiresPermission {
                 err = Error::permission(err.message().to_string());
             }
@@ -107,7 +117,10 @@ fn preflight(ctx: &Ctx, plan: &Plan) -> Result<Vec<String>> {
         }
     }
     if plan.battery.is_active() && !report.is_usable(Capability::PowerSource) {
-        caveats.push("battery policy is configured but the power source cannot be read; it will be ignored".into());
+        caveats.push(
+            "battery policy is configured but the power source cannot be read; it will be ignored"
+                .into(),
+        );
     }
     Ok(caveats)
 }
@@ -126,7 +139,10 @@ fn safety_warnings(ctx: &Ctx, plan: &Plan) {
         && let Ok(src) = backend.power_source()
         && src.kind == PowerSourceKind::Battery
     {
-        let pct = src.battery_percent.map(|p| format!(" ({p}%)")).unwrap_or_default();
+        let pct = src
+            .battery_percent
+            .map(|p| format!(" ({p}%)"))
+            .unwrap_or_default();
         ctx.out.warn(format!(
             "running on battery{pct}: keeping the system awake drains it faster"
         ));
@@ -180,7 +196,8 @@ pub fn start(ctx: &Ctx, args: &StartArgs) -> Result<ExitCode> {
     let _start_lock = ctx.store.acquire_start_lock(Duration::from_secs(15))?;
     let mut replaced = false;
     if let Some(active) = current_session(&ctx.store)? {
-        let same = active.request == plan.request && (!plan.explicit_length || same_length(&active, plan.length));
+        let same = active.request == plan.request
+            && (!plan.explicit_length || same_length(&active, plan.length));
         let policy = if args.replace {
             ConflictPolicy::Replace
         } else {
@@ -214,14 +231,21 @@ pub fn start(ctx: &Ctx, args: &StartArgs) -> Result<ExitCode> {
     print_caveats(ctx, caveats);
     safety_warnings(ctx, &plan);
     let state = spawn_host(ctx, &plan)?;
-    report_start(ctx, if replaced { "replaced" } else { "started" }, &state, plan.clamped);
+    report_start(
+        ctx,
+        if replaced { "replaced" } else { "started" },
+        &state,
+        plan.clamped,
+    );
     Ok(ExitCode::SUCCESS)
 }
 
 /// Whether a running session was started with `length`, so that repeating
 /// the same `caffeine start --duration` is idempotent.
 fn same_length(active: &SessionState, length: SessionLength) -> bool {
-    let original = active.expires_at.map(|e| e.saturating_sub(active.started_at));
+    let original = active
+        .expires_at
+        .map(|e| e.saturating_sub(active.started_at));
     original == length.as_duration().map(|d| d.as_secs())
 }
 
@@ -232,14 +256,20 @@ fn current_session(store: &SessionStore) -> Result<Option<SessionState>> {
             Probe::Active(s) => return Ok(Some(s)),
             Probe::Inactive => return Ok(None),
             Probe::Stale(s) => {
-                log::info!("removing stale state of session {} (pid {} is gone)", s.id, s.pid);
+                log::info!(
+                    "removing stale state of session {} (pid {} is gone)",
+                    s.id,
+                    s.pid
+                );
                 store.clear_stale()?;
                 return Ok(None);
             }
             Probe::Starting => std::thread::sleep(Duration::from_millis(50)),
         }
     }
-    Err(Error::conflict("a session host is starting but has not published its state"))
+    Err(Error::conflict(
+        "a session host is starting but has not published its state",
+    ))
 }
 
 fn report_start(ctx: &Ctx, result: &str, state: &SessionState, clamped: bool) {
@@ -253,12 +283,20 @@ fn report_start(ctx: &Ctx, result: &str, state: &SessionState, clamped: bool) {
     }
     let headline = match result {
         "already-active" => ctx.out.paint(Style::Good, "Already awake"),
-        "kept" => ctx.out.paint(Style::Good, "Already awake (kept running session)"),
-        "replaced" => ctx.out.paint(Style::Good, "Awake (replaced previous session)"),
+        "kept" => ctx
+            .out
+            .paint(Style::Good, "Already awake (kept running session)"),
+        "replaced" => ctx
+            .out
+            .paint(Style::Good, "Awake (replaced previous session)"),
         _ => ctx.out.paint(Style::Good, "Awake"),
     };
     let until = match state.expires_at {
-        Some(t) => format!("for {} (until {})", format_duration(Duration::from_secs(t.saturating_sub(unix_now()))), format_rfc3339(t)),
+        Some(t) => format!(
+            "for {} (until {})",
+            format_duration(Duration::from_secs(t.saturating_sub(unix_now()))),
+            format_rfc3339(t)
+        ),
         None => "until `caffeine stop`".into(),
     };
     ctx.out.line(format!("{headline} {until}"));
@@ -322,7 +360,8 @@ fn spawn_host(ctx: &Ctx, plan: &Plan) -> Result<SessionState> {
         runtime_dir: ctx.paths.runtime_dir.clone(),
         data_dir: ctx.paths.data_dir.clone(),
     };
-    let exe = std::env::current_exe().map_err(|e| Error::io("locating the caffeine executable", e))?;
+    let exe =
+        std::env::current_exe().map_err(|e| Error::io("locating the caffeine executable", e))?;
     let build = |breakaway: bool| {
         let mut cmd = ProcessCommand::new(&exe);
         cmd.arg("__host")
@@ -345,7 +384,9 @@ fn spawn_host(ctx: &Ctx, plan: &Plan) -> Result<SessionState> {
     let mut child = match build(true).spawn() {
         Ok(c) => c,
         // Not every job object permits breakaway; retry without it.
-        Err(_) if cfg!(windows) => build(false).spawn().map_err(|e| Error::io("starting the session host", e))?,
+        Err(_) if cfg!(windows) => build(false)
+            .spawn()
+            .map_err(|e| Error::io("starting the session host", e))?,
         Err(e) => return Err(Error::io("starting the session host", e)),
     };
     {
@@ -366,8 +407,10 @@ fn spawn_host(ctx: &Ctx, plan: &Plan) -> Result<SessionState> {
         Ok(line) => line,
         Err(_) => {
             let _ = child.kill();
-            return Err(Error::failure("the session host did not report readiness within 30 seconds")
-                .with_hint(format!("see the log at {}", spec.log_file.display())));
+            return Err(Error::failure(
+                "the session host did not report readiness within 30 seconds",
+            )
+            .with_hint(format!("see the log at {}", spec.log_file.display())));
         }
     };
     if line.trim().is_empty() {
@@ -510,14 +553,18 @@ fn run_foreground(
     opts.record_last_session = cfg.session.record_last_session;
     let host = SessionHost::new(backend, &ctx.store, opts, Arc::clone(&terminate));
 
-    let child: std::cell::RefCell<Option<std::io::Result<std::process::Child>>> = Default::default();
+    let child: std::cell::RefCell<Option<std::io::Result<std::process::Child>>> =
+        Default::default();
     let out = &ctx.out;
     let record = host.run(
         &mut |state| {
             out.json_event(&serde_json::json!({"event": "started", "session": state}));
             if !out.is_json() {
                 let until = match state.expires_at {
-                    Some(t) => format!(" for {}", format_duration(Duration::from_secs(t.saturating_sub(unix_now())))),
+                    Some(t) => format!(
+                        " for {}",
+                        format_duration(Duration::from_secs(t.saturating_sub(unix_now())))
+                    ),
                     None => String::new(),
                 };
                 match command {
@@ -526,7 +573,10 @@ fn run_foreground(
                         out.paint(Style::Good, "Awake"),
                         argv.join(" ")
                     )),
-                    None => out.line(format!("{}{until}. Press Ctrl+C to stop.", out.paint(Style::Good, "Awake"))),
+                    None => out.line(format!(
+                        "{}{until}. Press Ctrl+C to stop.",
+                        out.paint(Style::Good, "Awake")
+                    )),
                 }
                 out.line(format!("  {}", describe_assertions(state)));
             }
@@ -538,7 +588,9 @@ fn run_foreground(
             let mut slot = child.borrow_mut();
             match slot.as_mut() {
                 Some(Ok(c)) => match c.try_wait() {
-                    Ok(Some(status)) => Some(EndReason::CommandExited { code: status.code() }),
+                    Ok(Some(status)) => Some(EndReason::CommandExited {
+                        code: status.code(),
+                    }),
                     Ok(None) => None,
                     Err(_) => Some(EndReason::CommandExited { code: None }),
                 },
@@ -553,12 +605,20 @@ fn run_foreground(
     let mut exit = ExitCode::SUCCESS;
     if let Some(spawned) = child.into_inner() {
         let mut c = spawned.map_err(|e| {
-            Error::io(format!("running `{}`", command.map(|a| a[0].as_str()).unwrap_or("")), e)
+            Error::io(
+                format!("running `{}`", command.map(|a| a[0].as_str()).unwrap_or("")),
+                e,
+            )
         })?;
         if !matches!(record.end, EndReason::CommandExited { .. }) {
-            out.note(format!("session ended ({}); waiting for the command to finish", record.end.describe()));
+            out.note(format!(
+                "session ended ({}); waiting for the command to finish",
+                record.end.describe()
+            ));
         }
-        let status = c.wait().map_err(|e| Error::io("waiting for the command", e))?;
+        let status = c
+            .wait()
+            .map_err(|e| Error::io("waiting for the command", e))?;
         exit = exit_code_of(status);
     }
     finish_foreground(ctx, &record);
@@ -597,18 +657,25 @@ fn finish_foreground(ctx: &Ctx, record: &SessionRecord) {
         match cfg.general.notifications {
             Notifications::None => {}
             Notifications::Bell => eprint!("\x07"),
-            Notifications::Osc9 => eprint!("\x1b]9;Caffeine: session ended ({})\x07", record.end.describe()),
+            Notifications::Osc9 => eprint!(
+                "\x1b]9;Caffeine: session ended ({})\x07",
+                record.end.describe()
+            ),
         }
     }
     if let Some(err) = &record.release_error {
-        ctx.out.warn(format!("releasing assertions reported an error: {err}"));
+        ctx.out
+            .warn(format!("releasing assertions reported an error: {err}"));
     }
     if ctx.out.is_json() {
-        ctx.out.json_event(&serde_json::json!({"event": "ended", "record": record}));
+        ctx.out
+            .json_event(&serde_json::json!({"event": "ended", "record": record}));
     } else {
         ctx.out.line(format!(
             "Session ended after {}: {}",
-            format_duration(Duration::from_secs(record.ended_at.saturating_sub(record.started_at))),
+            format_duration(Duration::from_secs(
+                record.ended_at.saturating_sub(record.started_at)
+            )),
             record.end.describe()
         ));
     }
@@ -622,17 +689,29 @@ pub fn run(ctx: &Ctx, args: &RunArgs) -> Result<ExitCode> {
     print_caveats(ctx, caveats);
     safety_warnings(ctx, &plan);
     let program = args.command[0].clone();
-    run_foreground(ctx, plan, SessionMode::Command { program }, Some(&args.command))
+    run_foreground(
+        ctx,
+        plan,
+        SessionMode::Command { program },
+        Some(&args.command),
+    )
 }
 
 // ----------------------------------------------------------------- stop --
 
 fn stop_timeout(ctx: &Ctx, flag: Option<u32>) -> Duration {
-    Duration::from_secs(u64::from(flag.unwrap_or(ctx.config.config().session.stop_timeout_secs)))
+    Duration::from_secs(u64::from(
+        flag.unwrap_or(ctx.config.config().session.stop_timeout_secs),
+    ))
 }
 
 /// Stop a live session; returns its end record if one was written.
-fn stop_session(ctx: &Ctx, state: &SessionState, force: bool, timeout: Duration) -> Result<Option<SessionRecord>> {
+fn stop_session(
+    ctx: &Ctx,
+    state: &SessionState,
+    force: bool,
+    timeout: Duration,
+) -> Result<Option<SessionRecord>> {
     ctx.store.request_stop(&state.id)?;
     if ctx.store.wait_for_end(&state.id, timeout)? {
         return Ok(ctx.store.read_last_session()?.filter(|r| r.id == state.id));
@@ -645,11 +724,17 @@ fn stop_session(ctx: &Ctx, state: &SessionState, force: bool, timeout: Duration)
         ))
         .with_hint("retry with `caffeine stop --force` to terminate it"));
     }
-    ctx.out.warn(format!("terminating unresponsive session host (pid {})", state.pid));
+    ctx.out.warn(format!(
+        "terminating unresponsive session host (pid {})",
+        state.pid
+    ));
     process::kill(state.pid)?;
     // The OS releases process-bound assertions; wait for the lock to drop.
     if !ctx.store.wait_for_end(&state.id, Duration::from_secs(5))? {
-        return Err(Error::failure(format!("process {} is still holding the session lock", state.pid)));
+        return Err(Error::failure(format!(
+            "process {} is still holding the session lock",
+            state.pid
+        )));
     }
     ctx.store.clear_stale()?;
     // Session-scoped settings owned by the killed host are now restorable.
@@ -691,11 +776,19 @@ pub fn stop(ctx: &Ctx, args: &StopArgs) -> Result<ExitCode> {
             detail: "no active session".into(),
             record: None,
         },
-        Probe::Starting => return Err(Error::conflict("a session host is still starting; try again")),
+        Probe::Starting => {
+            return Err(Error::conflict(
+                "a session host is still starting; try again",
+            ));
+        }
         Probe::Stale(s) => {
             ctx.store.clear_stale()?;
             if let Ok(backend) = ctx.backend()
-                && backend.pending_recovery().unwrap_or_default().iter().any(|i| i.left_by_crash)
+                && backend
+                    .pending_recovery()
+                    .unwrap_or_default()
+                    .iter()
+                    .any(|i| i.left_by_crash)
             {
                 for note in backend.recover()? {
                     ctx.out.note(note);
@@ -704,7 +797,10 @@ pub fn stop(ctx: &Ctx, args: &StopArgs) -> Result<ExitCode> {
             StopReport {
                 stopped: false,
                 session_id: Some(s.id),
-                detail: format!("removed stale state of a session whose host (pid {}) is gone", s.pid),
+                detail: format!(
+                    "removed stale state of a session whose host (pid {}) is gone",
+                    s.pid
+                ),
                 record: None,
             }
         }
@@ -717,7 +813,9 @@ pub fn stop(ctx: &Ctx, args: &StopArgs) -> Result<ExitCode> {
                     Some(r) => format!(
                         "session {} after {}",
                         s.id,
-                        format_duration(Duration::from_secs(r.ended_at.saturating_sub(r.started_at)))
+                        format_duration(Duration::from_secs(
+                            r.ended_at.saturating_sub(r.started_at)
+                        ))
                     ),
                     None => format!("session {}", s.id),
                 },
@@ -726,11 +824,17 @@ pub fn stop(ctx: &Ctx, args: &StopArgs) -> Result<ExitCode> {
         }
     };
     if let Some(err) = report.record.as_ref().and_then(|r| r.release_error.clone()) {
-        ctx.out.warn(format!("the session host reported an error while releasing assertions: {err}"));
+        ctx.out.warn(format!(
+            "the session host reported an error while releasing assertions: {err}"
+        ));
     }
     ctx.out.json(&report);
     if report.stopped {
-        ctx.out.line(format!("{} {}", ctx.out.paint(Style::Good, "Stopped"), report.detail));
+        ctx.out.line(format!(
+            "{} {}",
+            ctx.out.paint(Style::Good, "Stopped"),
+            report.detail
+        ));
     } else {
         ctx.out.line(capitalize(&report.detail));
     }
@@ -739,7 +843,8 @@ pub fn stop(ctx: &Ctx, args: &StopArgs) -> Result<ExitCode> {
 
 fn capitalize(s: &str) -> String {
     let mut c = s.chars();
-    c.next().map_or_else(String::new, |f| f.to_uppercase().chain(c).collect())
+    c.next()
+        .map_or_else(String::new, |f| f.to_uppercase().chain(c).collect())
 }
 
 // --------------------------------------------------------------- status --
@@ -776,7 +881,9 @@ pub fn status(ctx: &Ctx) -> Result<ExitCode> {
         None
     };
     let power = backend.and_then(|b| b.power_source().ok());
-    let recovery = backend.and_then(|b| b.pending_recovery().ok()).unwrap_or_default();
+    let recovery = backend
+        .and_then(|b| b.pending_recovery().ok())
+        .unwrap_or_default();
     let last = ctx.store.read_last_session().ok().flatten();
 
     let (state, session, host_alive) = match probe {
@@ -811,13 +918,28 @@ pub fn status(ctx: &Ctx) -> Result<ExitCode> {
 fn print_status(out: &Output, r: &StatusReport, now: u64) {
     match (r.state, &r.session) {
         ("active", Some(s)) => {
-            out.line(format!("{} — session {}", out.paint(Style::Good, "Awake"), s.id));
+            out.line(format!(
+                "{} — session {}",
+                out.paint(Style::Good, "Awake"),
+                s.id
+            ));
             out.field("Mode", s.mode.describe());
-            out.field("Started", format!("{} ({})", format_relative(s.started_at, now), format_rfc3339(s.started_at)));
+            out.field(
+                "Started",
+                format!(
+                    "{} ({})",
+                    format_relative(s.started_at, now),
+                    format_rfc3339(s.started_at)
+                ),
+            );
             match (s.expires_at, r.remaining_secs) {
                 (Some(t), Some(rem)) => out.field(
                     "Remaining",
-                    format!("{} (until {})", format_duration(Duration::from_secs(rem)), format_rfc3339(t)),
+                    format!(
+                        "{} (until {})",
+                        format_duration(Duration::from_secs(rem)),
+                        format_rfc3339(t)
+                    ),
                 ),
                 _ => out.field("Remaining", "no time limit"),
             }
@@ -835,7 +957,15 @@ fn print_status(out: &Output, r: &StatusReport, now: u64) {
                 out.field("Battery rule", parts.join(", "));
             }
             if s.resumes > 0 {
-                out.field("Resumes", format!("{} (last {})", s.resumes, s.last_resume_at.map_or(String::new(), |t| format_relative(t, now))));
+                out.field(
+                    "Resumes",
+                    format!(
+                        "{} (last {})",
+                        s.resumes,
+                        s.last_resume_at
+                            .map_or(String::new(), |t| format_relative(t, now))
+                    ),
+                );
             }
             out.field("Host", format!("pid {} ({})", s.pid, s.backend));
         }
@@ -850,14 +980,19 @@ fn print_status(out: &Output, r: &StatusReport, now: u64) {
             out.line("  The OS released its assertions when the host exited. Run `caffeine stop` to clean up.");
         }
         _ => {
-            out.line(format!("{} — no active session", out.paint(Style::Dim, "Not awake")));
+            out.line(format!(
+                "{} — no active session",
+                out.paint(Style::Dim, "Not awake")
+            ));
             if let Some(last) = &r.last_session {
                 out.field(
                     "Last session",
                     format!(
                         "ended {} after {}: {}",
                         format_relative(last.ended_at, now),
-                        format_duration(Duration::from_secs(last.ended_at.saturating_sub(last.started_at))),
+                        format_duration(Duration::from_secs(
+                            last.ended_at.saturating_sub(last.started_at)
+                        )),
                         last.end.describe()
                     ),
                 );
@@ -878,25 +1013,42 @@ fn print_status(out: &Output, r: &StatusReport, now: u64) {
         out.field("Power", text);
     }
     for item in &r.recovery {
-        let kind = if item.left_by_crash { "needs restore" } else { "changed by caffeine" };
-        out.field("Lid policy", format!("{kind}: {} — `caffeine lid restore`", item.description));
+        let kind = if item.left_by_crash {
+            "needs restore"
+        } else {
+            "changed by caffeine"
+        };
+        out.field(
+            "Lid policy",
+            format!("{kind}: {} — `caffeine lid restore`", item.description),
+        );
     }
 }
 
 /// Used by `doctor`.
-pub fn probe_summary(store: &SessionStore) -> Result<(caffeine_core::power::CheckStatus, String, Option<String>)> {
+pub fn probe_summary(
+    store: &SessionStore,
+) -> Result<(caffeine_core::power::CheckStatus, String, Option<String>)> {
     use caffeine_core::power::CheckStatus;
     Ok(match store.probe()? {
         Probe::Inactive => (CheckStatus::Ok, "no active session".into(), None),
         Probe::Starting => (CheckStatus::Info, "a session host is starting".into(), None),
         Probe::Active(s) => (
             CheckStatus::Ok,
-            format!("session {} active (pid {}, {})", s.id, s.pid, s.mode.describe()),
+            format!(
+                "session {} active (pid {}, {})",
+                s.id,
+                s.pid,
+                s.mode.describe()
+            ),
             None,
         ),
         Probe::Stale(s) => (
             CheckStatus::Warn,
-            format!("stale state of session {} (host pid {} exited without cleanup)", s.id, s.pid),
+            format!(
+                "stale state of session {} (host pid {} exited without cleanup)",
+                s.id, s.pid
+            ),
             Some("run `caffeine stop` to remove it".into()),
         ),
     })

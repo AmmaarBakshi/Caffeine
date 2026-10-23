@@ -49,7 +49,10 @@ pub enum SettingKind {
     Choice(&'static [&'static str]),
     /// A [`crate::duration::SessionLength`] such as `2h` or `indefinite`.
     Length,
-    Integer { min: i64, max: i64 },
+    Integer {
+        min: i64,
+        max: i64,
+    },
     /// An optional absolute path; empty means "default".
     OptionalPath,
     /// A list of absolute paths.
@@ -67,7 +70,9 @@ impl SettingKind {
             SettingKind::Integer { min, max } => format!("integer {min}..={max}"),
             SettingKind::OptionalPath => "absolute path, or empty for the default".into(),
             SettingKind::PathList => "comma-separated absolute paths".into(),
-            SettingKind::StringList(Some(c)) => format!("comma-separated subset of: {}", c.join(", ")),
+            SettingKind::StringList(Some(c)) => {
+                format!("comma-separated subset of: {}", c.join(", "))
+            }
             SettingKind::StringList(None) => "comma-separated list".into(),
         }
     }
@@ -331,7 +336,10 @@ mod tests {
 
     #[test]
     fn experimental_names_match_schema_flags() {
-        let names: Vec<_> = crate::config::schema::EXPERIMENTAL_FLAGS.iter().map(|(n, _)| *n).collect();
+        let names: Vec<_> = crate::config::schema::EXPERIMENTAL_FLAGS
+            .iter()
+            .map(|(n, _)| *n)
+            .collect();
         assert_eq!(names, EXPERIMENTAL_NAMES);
     }
 

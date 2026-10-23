@@ -72,7 +72,12 @@ impl Journal {
     }
 
     /// Record a new entry and return its id.
-    pub fn add(&self, kind: EntryKind, description: &str, payload: serde_json::Value) -> Result<String> {
+    pub fn add(
+        &self,
+        kind: EntryKind,
+        description: &str,
+        payload: serde_json::Value,
+    ) -> Result<String> {
         let mut entries = self.entries()?;
         let id = new_session_id();
         entries.push(JournalEntry {
@@ -108,13 +113,24 @@ mod tests {
         let j = Journal::in_dir(dir.path());
         assert!(j.entries().unwrap().is_empty());
         let id = j
-            .add(EntryKind::PersistentLidPolicy, "lid", serde_json::json!({"ac": 1}))
+            .add(
+                EntryKind::PersistentLidPolicy,
+                "lid",
+                serde_json::json!({"ac": 1}),
+            )
             .unwrap();
         let sid = j
-            .add(EntryKind::SessionLidOverride { pid: 7 }, "session", serde_json::json!({}))
+            .add(
+                EntryKind::SessionLidOverride { pid: 7 },
+                "session",
+                serde_json::json!({}),
+            )
             .unwrap();
         assert_eq!(j.entries().unwrap().len(), 2);
-        assert_eq!(j.find(&EntryKind::PersistentLidPolicy).unwrap().unwrap().id, id);
+        assert_eq!(
+            j.find(&EntryKind::PersistentLidPolicy).unwrap().unwrap().id,
+            id
+        );
         j.remove(&id).unwrap();
         j.remove(&sid).unwrap();
         assert!(!j.path().exists(), "empty journal is deleted");
