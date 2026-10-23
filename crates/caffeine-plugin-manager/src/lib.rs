@@ -551,23 +551,6 @@ pub fn simplify_path(path: PathBuf) -> PathBuf {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::simplify_path;
-    use std::path::PathBuf;
-
-    #[test]
-    fn simplifies_verbatim_drive_paths_only() {
-        let p = |s: &str| simplify_path(PathBuf::from(s));
-        assert_eq!(p(r"\\?\C:\x\y"), PathBuf::from(r"C:\x\y"));
-        assert_eq!(
-            p(r"\\?\UNC\server\share"),
-            PathBuf::from(r"\\?\UNC\server\share")
-        );
-        assert_eq!(p("/usr/bin"), PathBuf::from("/usr/bin"));
-    }
-}
-
 /// Validate the user's settings table for a plugin against its schema.
 pub fn settings_problems(manifest: &Manifest, user: Option<&Value>) -> Vec<Problem> {
     let mut problems = Vec::new();
@@ -619,4 +602,21 @@ pub fn ungranted_permissions(manager: &Manager, entry: &PluginEntry) -> Vec<Perm
         .filter(|p| !granted.contains(p))
         .copied()
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::simplify_path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn simplifies_verbatim_drive_paths_only() {
+        let p = |s: &str| simplify_path(PathBuf::from(s));
+        assert_eq!(p(r"\\?\C:\x\y"), PathBuf::from(r"C:\x\y"));
+        assert_eq!(
+            p(r"\\?\UNC\server\share"),
+            PathBuf::from(r"\\?\UNC\server\share")
+        );
+        assert_eq!(p("/usr/bin"), PathBuf::from("/usr/bin"));
+    }
 }
