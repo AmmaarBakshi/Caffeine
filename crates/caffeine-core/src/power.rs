@@ -536,6 +536,10 @@ impl DiagnosticCheck {
 pub struct RecoveryItem {
     pub id: String,
     pub description: String,
+    /// `true` if the modification was left behind by a session that ended
+    /// without cleaning up (crash, forced kill, power loss); `false` for
+    /// deliberate persistent changes such as `caffeine lid set`.
+    pub left_by_crash: bool,
     /// When the modification was made.
     pub created_at: u64,
 }
