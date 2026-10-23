@@ -1,0 +1,21 @@
+[package]
+name = "caffeine-plugin-api"
+description = "Versioned plugin contract for Caffeine: manifests, permissions, the JSON stdio protocol and a plugin SDK"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords = ["caffeine", "plugin"]
+
+# Deliberately small: third-party plugins compile against this crate, so it
+# depends on nothing from the rest of Caffeine.
+[dependencies]
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml_edit.workspace = true
+
+[lints]
+workspace = true
