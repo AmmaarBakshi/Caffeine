@@ -322,11 +322,8 @@ impl SessionStore {
             Err(e) if e.kind() == crate::ErrorKind::Conflict => return Ok(None),
             Err(e) => return Err(e),
         };
-        let state = match self.read_state() {
-            Ok(s) => s,
-            // A corrupt state file with no owner is garbage; remove it.
-            Err(_) => None,
-        };
+        // A corrupt state file with no owner is garbage; remove it.
+        let state = self.read_state().unwrap_or_default();
         self.remove_state()?;
         fsutil::remove_if_exists(&self.stop_request_path())?;
         Ok(state)
