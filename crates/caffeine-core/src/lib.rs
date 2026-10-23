@@ -12,6 +12,7 @@ pub mod error;
 pub mod fsutil;
 pub mod paths;
 pub mod power;
+pub mod session;
 pub mod time;
 
 pub use error::{Error, ErrorKind, Result};
