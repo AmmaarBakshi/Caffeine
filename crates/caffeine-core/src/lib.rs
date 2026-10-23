@@ -9,6 +9,7 @@
 pub mod duration;
 pub mod error;
 pub mod paths;
+pub mod power;
 pub mod time;
 
 pub use error::{Error, ErrorKind, Result};
