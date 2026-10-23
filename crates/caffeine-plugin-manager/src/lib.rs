@@ -17,6 +17,7 @@ mod env;
 mod install;
 mod runner;
 
+
 mod trust;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -522,7 +523,7 @@ pub fn resolve_executable(manifest: &Manifest, dir: &Path) -> (Option<PathBuf>, 
         );
     }
     match (path.canonicalize(), dir.canonicalize()) {
-        (Ok(real), Ok(root)) if real.starts_with(&root) => (Some(real), Vec::new()),
+        (Ok(real), Ok(root)) if real.starts_with(&root) => (Some(simplify_path(real)), Vec::new()),
         (Ok(real), Ok(_)) => (
             None,
             vec![Problem::error(format!(
@@ -537,6 +538,33 @@ pub fn resolve_executable(manifest: &Manifest, dir: &Path) -> (Option<PathBuf>, 
                 path.display()
             ))],
         ),
+    }
+}
+
+/// Drop the `\\?\` prefix Windows' `canonicalize` adds when the path is
+/// representable without it; other tools (and people) handle it poorly.
+pub fn simplify_path(path: PathBuf) -> PathBuf {
+    let text = path.to_string_lossy();
+    match text.strip_prefix(r"\\?\") {
+        Some(rest) if rest.as_bytes().get(1) == Some(&b':') => PathBuf::from(rest),
+        _ => path,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::simplify_path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn simplifies_verbatim_drive_paths_only() {
+        let p = |s: &str| simplify_path(PathBuf::from(s));
+        assert_eq!(p(r"\\?\C:\x\y"), PathBuf::from(r"C:\x\y"));
+        assert_eq!(
+            p(r"\\?\UNC\server\share"),
+            PathBuf::from(r"\\?\UNC\server\share")
+        );
+        assert_eq!(p("/usr/bin"), PathBuf::from("/usr/bin"));
     }
 }
 

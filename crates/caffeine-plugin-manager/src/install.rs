@@ -12,7 +12,9 @@ use serde::Serialize;
 use caffeine_core::{Error, Paths, Result};
 use caffeine_plugin_api::{MANIFEST_FILE, Manifest, Problem};
 
-use crate::{Manager, Origin, compatibility_problems, read_manifest, resolve_executable};
+use crate::{
+    Manager, Origin, compatibility_problems, read_manifest, resolve_executable, simplify_path,
+};
 
 /// Result of `caffeine plugin validate`.
 #[derive(Debug, Clone, Serialize)]
@@ -143,6 +145,7 @@ impl Manager {
         let src_dir = report
             .dir
             .canonicalize()
+            .map(simplify_path)
             .map_err(|e| Error::io(format!("resolving {}", report.dir.display()), e))?;
         let mut files = vec![PathBuf::from(MANIFEST_FILE)];
         let exe = report
