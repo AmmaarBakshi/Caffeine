@@ -107,8 +107,16 @@ fn dispatch(ctx: &mut Ctx, cli: &Cli) -> Result<ExitCode> {
         Command::Run(args) => commands::session::run(ctx, args),
         Command::Lid(args) => commands::lid::run(ctx, args.action.as_ref()),
         Command::Capabilities => commands::info::capabilities(ctx),
-        Command::Doctor => commands::info::doctor(ctx, Vec::new()),
-        Command::Config(args) => commands::config::run(ctx, &args.action, &[]),
+        Command::Doctor => {
+            let checks = commands::plugin::doctor_checks(ctx);
+            commands::info::doctor(ctx, checks)
+        }
+        Command::Config(args) => {
+            let secrets = commands::plugin::secret_paths(ctx);
+            commands::config::run(ctx, &args.action, &secrets)
+        }
+        Command::Plugin(args) => commands::plugin::run(ctx, &args.action),
+        Command::External(argv) => commands::plugin::external(ctx, argv),
         Command::Completions { shell } => {
             clap_complete::generate(
                 *shell,

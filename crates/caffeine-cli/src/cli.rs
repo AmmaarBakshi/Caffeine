@@ -5,6 +5,9 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 const AFTER_HELP: &str = "\
+Commands of enabled plugins are available as `caffeine <command>`; put global
+options such as --json before the command name.
+
 Exit codes:
   0 success            3 no active session (status)   4 unsupported on this platform
   1 failure            5 permission denied            6 conflicts with current state
@@ -81,6 +84,8 @@ pub enum Command {
     Doctor,
     /// Inspect and modify the configuration file.
     Config(ConfigArgs),
+    /// List, inspect, enable, install and develop plugins.
+    Plugin(PluginArgs),
     /// Generate shell completion scripts.
     Completions {
         /// Target shell.
@@ -89,6 +94,9 @@ pub enum Command {
     /// Internal: the detached session host started by `caffeine start`.
     #[command(name = "__host", hide = true)]
     Host,
+    /// A command provided by an enabled plugin (see `caffeine plugin list`).
+    #[command(external_subcommand)]
+    External(Vec<String>),
 }
 
 #[derive(Debug, Clone, Args)]
@@ -217,6 +225,82 @@ pub enum ConfigAction {
     List,
 }
 
+/// Names (and aliases) of built-in commands; plugins may not shadow them.
+pub fn reserved_command_names() -> Vec<String> {
+    use clap::CommandFactory;
+    let cmd = Cli::command();
+    let mut names = vec!["help".to_string()];
+    for sub in cmd.get_subcommands() {
+        names.push(sub.get_name().to_string());
+        names.extend(sub.get_all_aliases().map(str::to_string));
+    }
+    names
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct PluginArgs {
+    #[command(subcommand)]
+    pub action: PluginAction,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum PluginAction {
+    /// List built-in, installed and external plugins.
+    List,
+    /// Show a plugin's manifest, permissions, settings, problems and health.
+    Info { name: String },
+    /// Review a plugin's permissions, trust its current files and enable it.
+    Enable {
+        name: String,
+        /// Do not ask for confirmation.
+        #[arg(short, long)]
+        yes: bool,
+    },
+    /// Disable a plugin and forget its trust record.
+    Disable { name: String },
+    /// Copy a plugin into the plugin directory (it is not enabled or run).
+    Install {
+        /// Plugin directory (or its caffeine-plugin.toml).
+        path: PathBuf,
+        /// Replace an installed plugin of the same name.
+        #[arg(long)]
+        upgrade: bool,
+    },
+    /// Delete an installed plugin.
+    Remove {
+        name: String,
+        /// Do not ask for confirmation.
+        #[arg(short, long)]
+        yes: bool,
+    },
+    /// Generate a documented starter plugin project.
+    Create {
+        name: String,
+        /// Directory to create (default: ./caffeine-plugin-<name>).
+        #[arg(long, value_name = "DIR")]
+        path: Option<PathBuf>,
+        /// Use a local caffeine-plugin-api checkout instead of the git repository.
+        #[arg(long, value_name = "DIR")]
+        api_path: Option<PathBuf>,
+    },
+    /// Check a plugin's manifest, executable and compatibility.
+    Validate {
+        /// Plugin directory (or its caffeine-plugin.toml).
+        #[arg(default_value = ".")]
+        path: PathBuf,
+    },
+    /// Run a plugin command (the same as `caffeine <command>`).
+    Run {
+        name: String,
+        /// Which of the plugin's commands to run (default: its first).
+        #[arg(short, long, value_name = "COMMAND")]
+        command: Option<String>,
+        /// Arguments for the plugin command.
+        #[arg(last = true, value_name = "ARGS")]
+        args: Vec<String>,
+    },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -244,5 +328,17 @@ mod tests {
         }
         let cli = Cli::try_parse_from(["caffeine", "status", "--json"]).unwrap();
         assert!(cli.global.json);
+        let cli = Cli::try_parse_from(["caffeine", "build", "release", "--locked"]).unwrap();
+        match cli.command {
+            Some(Command::External(a)) => assert_eq!(a, ["build", "release", "--locked"]),
+            other => panic!("unexpected {other:?}"),
+        }
+        let cli = Cli::try_parse_from(["caffeine", "plugin", "run", "hello", "--", "Ada"]).unwrap();
+        match cli.command {
+            Some(Command::Plugin(PluginArgs {
+                action: PluginAction::Run { name, args, .. },
+            })) => assert_eq!((name.as_str(), args), ("hello", vec!["Ada".to_string()])),
+            other => panic!("unexpected {other:?}"),
+        }
     }
 }
