@@ -24,7 +24,7 @@ to the file shown by `caffeine config path --json` (`log_dir`), or to
    `caffeine capabilities` reports `idle-sleep` as *limited* on these
    machines. Use `caffeine start --display` (or `power.display = "keep-on"`).
 3. **Is the session still running?** `caffeine status`. A session that ended
-   records why (`expired`, `battery threshold`, `stopped`, ...), and
+   records why ("duration elapsed", "switched to battery power", "stopped", ...), and
    `power.on_battery` or `power.battery_threshold` may have ended it.
 4. **Linux desktops** sometimes run their own idle-suspend timer that ignores
    logind. Keep `advanced.backend = "auto"` (or `logind+desktop`) so both
