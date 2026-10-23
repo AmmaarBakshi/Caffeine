@@ -8,10 +8,10 @@
 
 use std::fmt;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Broad classification of a failure. Each kind maps to a stable exit code.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ErrorKind {
     /// Generic failure (exit code 1).
@@ -201,6 +201,18 @@ impl Error {
     }
 }
 
+impl From<ErrorReport> for Error {
+    fn from(r: ErrorReport) -> Self {
+        Error {
+            kind: r.kind,
+            message: r.message,
+            hint: r.hint,
+            os_code: r.os_code,
+            source: None,
+        }
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.message)?;
@@ -222,8 +234,9 @@ impl std::error::Error for Error {
     }
 }
 
-/// Serializable error representation used by `--json` output.
-#[derive(Debug, Clone, Serialize)]
+/// Serializable error representation used by `--json` output and by the
+/// session host to report failures to the process that started it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorReport {
     pub kind: ErrorKind,
     pub message: String,
