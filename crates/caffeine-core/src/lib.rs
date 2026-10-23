@@ -8,6 +8,7 @@
 
 pub mod duration;
 pub mod error;
+pub mod fsutil;
 pub mod paths;
 pub mod power;
 pub mod time;
