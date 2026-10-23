@@ -6,12 +6,13 @@
 //! native backends live in `caffeine-platform` and implement the
 //! [`power::PowerBackend`] trait defined here.
 
-
 pub mod duration;
 pub mod error;
+pub mod paths;
 pub mod time;
 
 pub use error::{Error, ErrorKind, Result};
+pub use paths::Paths;
 
 /// Version of this build of Caffeine.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
