@@ -16,6 +16,7 @@
 mod env;
 mod install;
 mod runner;
+pub mod scaffold;
 
 
 mod trust;
