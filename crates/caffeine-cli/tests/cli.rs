@@ -271,17 +271,20 @@ fn doctor_produces_checks() {
 #[test]
 fn session_lifecycle() {
     let home = Home::new();
-    if !idle_sleep_usable(&home) {
-        let out = home.run(&["start", "--duration", "1m"]);
+    let usable = idle_sleep_usable(&home);
+    let (code, v) = home.json(&["start", "--duration", "10m"]);
+    if code != 0 {
+        // Unsupported, or (e.g. a CI runner without an active seat) refused
+        // by the OS: it must fail with an honest error and hold nothing.
+        assert!(matches!(code, 4 | 5), "start must fail honestly: {v}");
         assert!(
-            matches!(out.status.code(), Some(4 | 5)),
-            "start must fail honestly: {}",
-            stderr(&out)
+            !usable || code == 5,
+            "capabilities said idle-sleep is usable: {v}"
         );
+        let (code, status) = home.json(&["status"]);
+        assert_eq!((code, status["state"].as_str()), (3, Some("inactive")));
         return;
     }
-    let (code, v) = home.json(&["start", "--duration", "10m"]);
-    assert_eq!(code, 0, "{v}");
     assert_eq!(v["result"], "started");
     let id = v["session"]["id"].as_str().unwrap().to_string();
 
@@ -308,12 +311,14 @@ fn run_passes_through_the_exit_code() {
     let exe = std::env::current_exe().unwrap();
     // Re-run this test binary with a filter that matches nothing: exits 0.
     let args = [exe.to_str().unwrap(), "--exact", "no-such-test"];
-    if !idle_sleep_usable(&home) {
-        return;
-    }
     let mut full = vec!["-q", "run", "--"];
     full.extend_from_slice(&args);
     let out = home.run(&full);
+    if matches!(out.status.code(), Some(4 | 5)) {
+        // No assertion available here; the command must not have run as if
+        // it were protected. (See session_lifecycle.)
+        return;
+    }
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     let (_, v) = home.json(&["status"]);
     assert_eq!(v["last_session"]["end"]["reason"], "command-exited");
