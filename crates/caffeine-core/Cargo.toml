@@ -1,0 +1,22 @@
+[package]
+name = "caffeine-core"
+description = "Core types, configuration and session engine for Caffeine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+directories.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml_edit.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,49 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT"
+repository = "https://github.com/AMMAAR-IC/caffeine"
+authors = ["The Caffeine contributors"]
+
+[workspace.dependencies]
+caffeine-core = { path = "crates/caffeine-core", version = "0.1.0" }
+caffeine-platform = { path = "crates/caffeine-platform", version = "0.1.0" }
+caffeine-plugin-api = { path = "crates/caffeine-plugin-api", version = "0.1.0" }
+caffeine-plugin-manager = { path = "crates/caffeine-plugin-manager", version = "0.1.0" }
+caffeine-plugin-build = { path = "crates/caffeine-plugin-build", version = "0.1.0" }
+caffeine-tui = { path = "crates/caffeine-tui", version = "0.1.0" }
+
+clap = { version = "4.6", features = ["derive", "wrap_help"] }
+clap_complete = "4.6"
+ctrlc = { version = "3.5", features = ["termination"] }
+directories = "6"
+libc = "0.2"
+log = "0.4"
+ratatui = { version = "0.30", default-features = false, features = ["crossterm"] }
+semver = { version = "1", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11"
+tempfile = "3"
+thiserror = "2"
+toml_edit = { version = "0.25", features = ["serde"] }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "unwind"
