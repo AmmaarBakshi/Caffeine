@@ -46,6 +46,58 @@ pub fn configure_detached_breakaway(cmd: &mut Command) {
     );
 }
 
+/// Run `spawn` with this process's own stdin, stdout and stderr marked
+/// non-inheritable, then restore them.
+///
+/// Windows hands every inheritable handle to a child process, not only the
+/// ones given to it as stdio. A detached session host would otherwise keep
+/// the invoking process's stdout open for the whole session, so anything
+/// capturing `caffeine start` (`$(caffeine start)`, a CI step, a test
+/// harness) would wait until the session ended. The child's own stdio is
+/// unaffected: std creates fresh inheritable handles for it. Unix needs no
+/// such step because std only passes the three stdio descriptors.
+pub fn without_inherited_std_handles<T>(spawn: impl FnOnce() -> T) -> T {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Foundation::{
+            GetHandleInformation, HANDLE_FLAG_INHERIT, INVALID_HANDLE_VALUE, SetHandleInformation,
+        };
+        use windows_sys::Win32::System::Console::{
+            GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+        };
+        let mut restore = Vec::new();
+        for which in [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE] {
+            // SAFETY: querying and changing flags of this process's own std
+            // handles; invalid or null handles are skipped.
+            unsafe {
+                let h = GetStdHandle(which);
+                if h.is_null() || h == INVALID_HANDLE_VALUE {
+                    continue;
+                }
+                let mut flags = 0;
+                if GetHandleInformation(h, &mut flags) != 0
+                    && flags & HANDLE_FLAG_INHERIT != 0
+                    && SetHandleInformation(h, HANDLE_FLAG_INHERIT, 0) != 0
+                {
+                    restore.push(h);
+                }
+            }
+        }
+        let result = spawn();
+        for h in restore {
+            // SAFETY: as above; restores the flag cleared before spawning.
+            unsafe {
+                SetHandleInformation(h, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+            }
+        }
+        result
+    }
+    #[cfg(not(windows))]
+    {
+        spawn()
+    }
+}
+
 #[cfg(windows)]
 mod windows_flags {
     pub const DETACHED_PROCESS: u32 = 0x0000_0008;

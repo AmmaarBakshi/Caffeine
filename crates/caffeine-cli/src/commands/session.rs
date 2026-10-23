@@ -381,14 +381,13 @@ fn spawn_host(ctx: &Ctx, plan: &Plan) -> Result<SessionState> {
         }
         cmd
     };
-    let mut child = match build(true).spawn() {
-        Ok(c) => c,
+    let spawned = process::without_inherited_std_handles(|| match build(true).spawn() {
+        Ok(c) => Ok(c),
         // Not every job object permits breakaway; retry without it.
-        Err(_) if cfg!(windows) => build(false)
-            .spawn()
-            .map_err(|e| Error::io("starting the session host", e))?,
-        Err(e) => return Err(Error::io("starting the session host", e)),
-    };
+        Err(_) if cfg!(windows) => build(false).spawn(),
+        Err(e) => Err(e),
+    });
+    let mut child = spawned.map_err(|e| Error::io("starting the session host", e))?;
     {
         let mut stdin = child.stdin.take().expect("stdin is piped");
         let payload = serde_json::to_vec(&spec).expect("host spec serializes");
