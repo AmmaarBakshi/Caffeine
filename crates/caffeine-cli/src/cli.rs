@@ -248,16 +248,23 @@ pub enum PluginAction {
     /// List built-in, installed and external plugins.
     List,
     /// Show a plugin's manifest, permissions, settings, problems and health.
-    Info { name: String },
+    Info {
+        /// Plugin name.
+        name: String,
+    },
     /// Review a plugin's permissions, trust its current files and enable it.
     Enable {
+        /// Plugin name.
         name: String,
         /// Do not ask for confirmation.
         #[arg(short, long)]
         yes: bool,
     },
     /// Disable a plugin and forget its trust record.
-    Disable { name: String },
+    Disable {
+        /// Plugin name.
+        name: String,
+    },
     /// Copy a plugin into the plugin directory (it is not enabled or run).
     Install {
         /// Plugin directory (or its caffeine-plugin.toml).
@@ -268,6 +275,7 @@ pub enum PluginAction {
     },
     /// Delete an installed plugin.
     Remove {
+        /// Plugin name.
         name: String,
         /// Do not ask for confirmation.
         #[arg(short, long)]
@@ -275,6 +283,7 @@ pub enum PluginAction {
     },
     /// Generate a documented starter plugin project.
     Create {
+        /// Name of the new plugin (lowercase letters, digits and hyphens).
         name: String,
         /// Directory to create (default: ./caffeine-plugin-NAME).
         #[arg(long, value_name = "DIR")]
@@ -291,6 +300,7 @@ pub enum PluginAction {
     },
     /// Run a plugin command (the same as `caffeine <command>`).
     Run {
+        /// Plugin name.
         name: String,
         /// Which of the plugin's commands to run (default: its first).
         #[arg(short, long, value_name = "COMMAND")]
