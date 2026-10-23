@@ -276,7 +276,7 @@ pub enum PluginAction {
     /// Generate a documented starter plugin project.
     Create {
         name: String,
-        /// Directory to create (default: ./caffeine-plugin-<name>).
+        /// Directory to create (default: ./caffeine-plugin-NAME).
         #[arg(long, value_name = "DIR")]
         path: Option<PathBuf>,
         /// Use a local caffeine-plugin-api checkout instead of the git repository.
