@@ -17,11 +17,15 @@
 
 pub mod manifest;
 pub mod permission;
+pub mod plugin;
+pub mod protocol;
+pub mod sdk;
 
 use semver::Version;
 
 pub use manifest::{CommandSpec, ExecutableSpec, MANIFEST_FILE, Manifest, Problem, SettingSpec};
 pub use permission::Permission;
+pub use plugin::{Check, CheckStatus, Host, Invocation, LogLevel, Plugin, PluginError};
 
 /// Version of the plugin protocol implemented by this crate. A plugin
 /// whose manifest `api` requirement does not match it is not run.
