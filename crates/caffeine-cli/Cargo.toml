@@ -21,6 +21,7 @@ caffeine-platform.workspace = true
 caffeine-plugin-api.workspace = true
 caffeine-plugin-build.workspace = true
 caffeine-plugin-manager.workspace = true
+caffeine-tui.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
 ctrlc.workspace = true

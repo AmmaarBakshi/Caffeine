@@ -71,10 +71,7 @@ fn dispatch(ctx: &mut Ctx, cli: &Cli) -> Result<ExitCode> {
         ));
     }
     if cli.config_editor {
-        return Err(
-            Error::unsupported("the interactive editor is not available in this build")
-                .with_hint("use `caffeine config edit` or `caffeine config set`"),
-        );
+        return commands::config::interactive(ctx);
     }
     let Some(command) = &cli.command else {
         return match ctx.config.config().general.default_command {

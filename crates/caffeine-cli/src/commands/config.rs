@@ -238,6 +238,72 @@ fn list(ctx: &Ctx) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+// ---------------------------------------------------- interactive editor --
+
+/// `caffeine --config`: the built-in terminal editor.
+pub fn interactive(ctx: &mut Ctx) -> Result<ExitCode> {
+    if ctx.out.is_json() {
+        return Err(Error::usage(
+            "the configuration editor is interactive and does not support --json",
+        ));
+    }
+    if let Some(e) = &ctx.config_error {
+        return Err(Error::config(format!("cannot open the editor: {}", e.message()))
+            .with_hint("fix the file with `caffeine config edit`, or start over with `caffeine config reset`"));
+    }
+    let capabilities = ctx
+        .backend()
+        .map(|b| b.capabilities())
+        .map_err(|e| e.to_string());
+    let plugins = crate::commands::plugin::manager(ctx).map_err(|e| e.to_string());
+    let log_file = ctx
+        .config
+        .config()
+        .advanced
+        .log_file
+        .clone()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| ctx.paths.log_file());
+    let info = vec![
+        (
+            "Configuration file".to_string(),
+            ctx.paths.config_file.display().to_string(),
+        ),
+        (
+            "Data directory".to_string(),
+            ctx.paths.data_dir.display().to_string(),
+        ),
+        (
+            "Runtime directory".to_string(),
+            ctx.paths.runtime_dir.display().to_string(),
+        ),
+        ("Session log".to_string(), log_file.display().to_string()),
+        (
+            "Plugin directory".to_string(),
+            ctx.paths.plugin_dir.display().to_string(),
+        ),
+    ];
+    let outcome = caffeine_tui::run(caffeine_tui::EditorInput {
+        config: ctx.config.clone(),
+        capabilities,
+        plugins,
+        info,
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    })?;
+    match outcome {
+        caffeine_tui::Outcome::Saved => ctx.out.line(format!(
+            "{} {}",
+            ctx.out.paint(Style::Good, "saved"),
+            ctx.paths.config_file.display()
+        )),
+        caffeine_tui::Outcome::Unchanged => ctx.out.line("No changes."),
+        caffeine_tui::Outcome::Discarded => ctx
+            .out
+            .line("Changes discarded; the file was not modified."),
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
 // ---------------------------------------------------------------- edit --
 
 /// Split an `$EDITOR` value into program and arguments, honoring simple
