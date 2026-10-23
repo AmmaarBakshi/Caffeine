@@ -697,6 +697,117 @@ pub fn run(ctx: &Ctx, args: &RunArgs) -> Result<ExitCode> {
     )
 }
 
+/// Keep the system awake (with the configured defaults) while `work` runs
+/// on another thread; used for plugin commands declared `keep_awake`.
+/// Returns what `work` returned and the session record, if this call
+/// started a session (an already-running one that covers the request is
+/// reused, as with `caffeine run`).
+pub fn keep_awake_while<T: Send>(
+    ctx: &Ctx,
+    label: &str,
+    work: impl FnOnce() -> Result<(i32, T)> + Send,
+) -> Result<((i32, T), Option<SessionRecord>)> {
+    let args = SessionArgs {
+        duration: None,
+        display: false,
+        no_display: false,
+        no_idle: false,
+        lid: None,
+        reason: Some(format!("{label} is running")),
+    };
+    let plan = plan(ctx, &args)?;
+    let caveats = preflight(ctx, &plan)?;
+    if let Some(active) = current_session(&ctx.store)? {
+        if covers(&active.request, &plan.request) {
+            ctx.out.note(format!(
+                "session {} (pid {}) already keeps the system awake",
+                active.id, active.pid
+            ));
+            return Ok((work()?, None));
+        }
+        return Err(Error::conflict(format!(
+            "a session with different settings is active (pid {}); `{label}` needs its own",
+            active.pid
+        ))
+        .with_hint("stop it with `caffeine stop` first"));
+    }
+    recovery_warnings(ctx);
+    print_caveats(ctx, caveats);
+    safety_warnings(ctx, &plan);
+
+    let terminate = Arc::new(AtomicBool::new(false));
+    install_termination_handler(&terminate);
+    let backend = ctx.backend()?;
+    let mut opts = HostOptions::new(
+        plan.request.clone(),
+        plan.length,
+        SessionMode::Command {
+            program: label.to_string(),
+        },
+    );
+    opts.battery = plan.battery;
+    opts.record_last_session = ctx.config.config().session.record_last_session;
+    let host = SessionHost::new(backend, &ctx.store, opts, terminate);
+    let out = &ctx.out;
+
+    std::thread::scope(|scope| {
+        let work = std::cell::Cell::new(Some(work));
+        let handle = std::cell::RefCell::new(None);
+        let finished = std::cell::RefCell::new(None);
+        let record = host.run(
+            &mut |state| {
+                if !out.is_json() {
+                    out.note(format!(
+                        "keeping the system awake while `{label}` runs ({})",
+                        describe_assertions(state)
+                    ));
+                }
+                let work = work.take().expect("on_ready runs once");
+                *handle.borrow_mut() = Some(scope.spawn(work));
+            },
+            &mut || {
+                let mut slot = handle.borrow_mut();
+                if !slot.as_ref().is_some_and(|h| h.is_finished()) {
+                    return None;
+                }
+                let result = join(slot.take().expect("checked above"));
+                let code = match &result {
+                    Ok((c, _)) => *c,
+                    Err(e) => e.exit_code(),
+                };
+                let code = Some(code);
+                *finished.borrow_mut() = Some(result);
+                Some(EndReason::CommandExited { code })
+            },
+        );
+        // The work is never abandoned: if the session ended first (stop,
+        // battery, Ctrl+C), wait for it before returning.
+        let pending = handle.into_inner();
+        let record = record?;
+        let result = match (finished.into_inner(), pending) {
+            (Some(r), _) => r,
+            (None, Some(h)) => {
+                out.note(format!(
+                    "session ended ({}); waiting for `{label}` to finish",
+                    record.end.describe()
+                ));
+                join(h)
+            }
+            (None, None) => Err(Error::failure("the session ended before the work started")),
+        };
+        if let Some(err) = &record.release_error {
+            out.warn(format!("releasing assertions reported an error: {err}"));
+        }
+        Ok((result?, Some(record)))
+    })
+}
+
+fn join<T>(handle: std::thread::ScopedJoinHandle<'_, Result<T>>) -> Result<T> {
+    handle
+        .join()
+        .unwrap_or_else(|_| Err(Error::failure("the command panicked")))
+}
+
 // ----------------------------------------------------------------- stop --
 
 fn stop_timeout(ctx: &Ctx, flag: Option<u32>) -> Duration {
