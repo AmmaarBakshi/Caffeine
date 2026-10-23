@@ -13,6 +13,8 @@ pub mod fsutil;
 pub mod paths;
 pub mod power;
 pub mod session;
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;
 pub mod time;
 
 pub use error::{Error, ErrorKind, Result};

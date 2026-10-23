@@ -20,3 +20,7 @@ tempfile.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+# Exposes `caffeine_core::testing::FakeBackend` for other crates' tests.
+testing = []
