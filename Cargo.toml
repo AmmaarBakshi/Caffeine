@@ -1,5 +1,6 @@
 [workspace]
 resolver = "3"
+default-members = ["crates/caffeine-cli"]
 members = ["crates/*"]
 
 [workspace.package]
@@ -18,12 +19,12 @@ caffeine-plugin-manager = { path = "crates/caffeine-plugin-manager", version = "
 caffeine-plugin-build = { path = "crates/caffeine-plugin-build", version = "0.1.0" }
 caffeine-tui = { path = "crates/caffeine-tui", version = "0.1.0" }
 
-clap = { version = "4.6", features = ["derive", "wrap_help"] }
+clap = { version = "4.6", features = ["derive", "env", "wrap_help"] }
 clap_complete = "4.6"
 ctrlc = { version = "3.5", features = ["termination"] }
 directories = "6"
 libc = "0.2"
-log = "0.4"
+log = { version = "0.4", features = ["std"] }
 ratatui = { version = "0.30", default-features = false, features = ["crossterm"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
