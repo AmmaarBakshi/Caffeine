@@ -533,7 +533,7 @@ fn run_foreground(
                 "session {} (pid {}) already keeps the system awake; running the command directly",
                 active.id, active.pid
             ));
-            return run_plain(argv);
+            return run_plain(argv, ctx.out.is_json());
         }
         return Err(Error::conflict(format!(
             "a session is already active (pid {}, started {})",
@@ -580,7 +580,12 @@ fn run_foreground(
                 out.line(format!("  {}", describe_assertions(state)));
             }
             if let Some(argv) = command {
-                *child.borrow_mut() = Some(ProcessCommand::new(&argv[0]).args(&argv[1..]).spawn());
+                *child.borrow_mut() = Some(
+                    ProcessCommand::new(&argv[0])
+                        .args(&argv[1..])
+                        .stdout(command_stdout(out.is_json()))
+                        .spawn(),
+                );
             }
         },
         &mut || {
@@ -630,12 +635,23 @@ fn covers(active: &AwakeRequest, wanted: &AwakeRequest) -> bool {
         && (active.lid == wanted.lid || wanted.lid == LidSessionMode::System)
 }
 
-fn run_plain(argv: &[String]) -> Result<ExitCode> {
+fn run_plain(argv: &[String], json: bool) -> Result<ExitCode> {
     let status = ProcessCommand::new(&argv[0])
         .args(&argv[1..])
+        .stdout(command_stdout(json))
         .status()
         .map_err(|e| Error::io(format!("running `{}`", argv[0]), e))?;
     Ok(exit_code_of(status))
+}
+
+/// Where a wrapped command's stdout goes: the terminal, or in JSON mode our
+/// stderr, so stdout carries only JSON (as `sdk::child_stdout` does for plugins).
+fn command_stdout(json: bool) -> Stdio {
+    if json {
+        Stdio::from(std::io::stderr())
+    } else {
+        Stdio::inherit()
+    }
 }
 
 fn exit_code_of(status: std::process::ExitStatus) -> ExitCode {
