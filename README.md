@@ -51,7 +51,7 @@ environment.
 From source, with Rust 1.89 or newer:
 
 ```sh
-cargo install --git https://github.com/AMMAAR-IC/caffeine caffeine-cli
+cargo install --git https://github.com/AmmaarBakshi/Caffeine caffeine-cli
 ```
 
 That installs a single `caffeine` binary. It needs no root or Administrator

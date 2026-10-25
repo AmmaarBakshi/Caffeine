@@ -9,14 +9,14 @@ desktop environment.
 You need Rust 1.89 or newer (`rustup update stable`).
 
 ```sh
-cargo install --locked --git https://github.com/AMMAAR-IC/caffeine caffeine-cli
+cargo install --locked --git https://github.com/AmmaarBakshi/Caffeine caffeine-cli
 ```
 
 or, from a checkout:
 
 ```sh
-git clone https://github.com/AMMAAR-IC/caffeine
-cd caffeine
+git clone https://github.com/AmmaarBakshi/Caffeine
+cd Caffeine
 cargo install --locked --path crates/caffeine-cli
 ```
 
