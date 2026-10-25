@@ -45,7 +45,7 @@ caffeine word-count you
 The generated project is the `caffeine-plugin-hello` example from this
 repository with your plugin's name substituted, and Caffeine's test suite
 builds and tests it. It depends on `caffeine-plugin-api` from the Caffeine git
-repository. Use `--api-path ../caffeine/crates/caffeine-plugin-api` to point it
+repository. Use `--api-path ../Caffeine/crates/caffeine-plugin-api` to point it
 at a local checkout instead. To try the example itself from a checkout, see
 [its README](../crates/caffeine-plugin-hello/README.md).
 
