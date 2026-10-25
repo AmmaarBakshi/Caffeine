@@ -286,11 +286,13 @@ pub fn is_valid_setting_key(key: &str) -> bool {
 }
 
 /// Whether `path` is relative and stays inside the directory it is
-/// resolved against (no `..`, no root or drive prefix).
+/// resolved against (no `..`, no root or drive prefix) on every platform.
+/// `:` is rejected too: `C:/x` is a plain relative path on Unix but absolute
+/// on Windows, and `tool.exe:s` names an NTFS alternate data stream.
 pub fn is_contained_relative_path(path: &str) -> bool {
     let p = Path::new(path);
     !path.is_empty()
-        && !path.contains('\\')
+        && !path.contains(['\\', ':'])
         && p.components()
             .all(|c| matches!(c, Component::Normal(_) | Component::CurDir))
 }
@@ -562,7 +564,16 @@ description = "Repetitions"
     fn contained_paths() {
         assert!(is_contained_relative_path("bin/tool"));
         assert!(is_contained_relative_path("./tool.exe"));
-        for bad in ["", "../x", "bin/../../x", "/usr/bin/x", "C:/x", "bin\\x"] {
+        for bad in [
+            "",
+            "../x",
+            "bin/../../x",
+            "/usr/bin/x",
+            "C:/x",
+            "C:x",
+            "bin\\x",
+            "bin/tool.exe:hidden",
+        ] {
             assert!(!is_contained_relative_path(bad), "{bad}");
         }
     }
