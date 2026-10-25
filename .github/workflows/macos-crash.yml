@@ -1,0 +1,39 @@
+name: macOS crash diagnosis
+
+on:
+  push:
+    branches: [ci/macos-crash]
+
+jobs:
+  diagnose:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sw_vers; uname -m
+      - run: cargo build --locked
+      - name: run commands and report how they exit
+        shell: bash
+        run: |
+          export CAFFEINE_HOME="$RUNNER_TEMP/home"
+          for cmd in "--version" "capabilities" "status" "lid" "doctor"; do
+            echo "::group::caffeine $cmd"
+            set +e
+            target/debug/caffeine $cmd
+            code=$?
+            set -e
+            echo ">>> caffeine $cmd exited with $code"
+            echo "::endgroup::"
+          done
+      - name: lldb backtraces
+        if: always()
+        shell: bash
+        run: |
+          export CAFFEINE_HOME="$RUNNER_TEMP/home"
+          for cmd in capabilities status; do
+            echo "=== lldb: caffeine $cmd"
+            lldb --batch -o run -o "bt all" -o "register read" -o "disassemble -p -c 8" -- target/debug/caffeine $cmd || true
+          done
+      - name: platform unit tests
+        if: always()
+        run: cargo test -p caffeine-platform --locked -- --nocapture
