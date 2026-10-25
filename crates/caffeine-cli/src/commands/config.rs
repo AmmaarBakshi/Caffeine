@@ -401,7 +401,8 @@ fn edit(ctx: &mut Ctx) -> Result<ExitCode> {
             ctx.out.line("No changes.");
             return Ok(ExitCode::SUCCESS);
         }
-        match ConfigFile::from_text(&path, &edited) {
+        // Validate under the scratch name: that is the file with the error.
+        match ConfigFile::from_text(&scratch, &edited) {
             Ok(_) => {
                 if fsutil::read_optional(&path)? != original {
                     return Err(Error::conflict(format!(
