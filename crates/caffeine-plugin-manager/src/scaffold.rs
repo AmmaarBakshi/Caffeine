@@ -120,7 +120,7 @@ passed to `initialize`.
     Ok(vec![
         (PathBuf::from("Cargo.toml"), cargo_toml),
         (PathBuf::from(MANIFEST_FILE), subst(MANIFEST)),
-        (PathBuf::from("src/main.rs"), subst(MAIN_RS)),
+        (Path::new("src").join("main.rs"), subst(MAIN_RS)),
         (PathBuf::from("README.md"), readme),
         (PathBuf::from(".gitignore"), "/target\n".to_string()),
     ])
