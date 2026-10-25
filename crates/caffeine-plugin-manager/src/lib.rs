@@ -512,7 +512,7 @@ pub fn resolve_executable(manifest: &Manifest, dir: &Path) -> (Option<PathBuf>, 
         // Already reported by manifest validation.
         return (None, Vec::new());
     }
-    let path = dir.join(relative);
+    let path = join_manifest_path(dir, relative);
     if !path.is_file() {
         return (
             None,
@@ -539,6 +539,15 @@ pub fn resolve_executable(manifest: &Manifest, dir: &Path) -> (Option<PathBuf>, 
             ))],
         ),
     }
+}
+
+/// Join a manifest path (always `/`-separated) onto `dir` with the native
+/// separator, so messages don't show `dir\target/release/x.exe`.
+pub fn join_manifest_path(dir: &Path, relative: &str) -> PathBuf {
+    relative
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .fold(dir.to_path_buf(), |path, part| path.join(part))
 }
 
 /// Drop the `\\?\` prefix Windows' `canonicalize` adds when the path is
@@ -606,8 +615,16 @@ pub fn ungranted_permissions(manager: &Manager, entry: &PluginEntry) -> Vec<Perm
 
 #[cfg(test)]
 mod tests {
-    use super::simplify_path;
-    use std::path::PathBuf;
+    use super::{join_manifest_path, simplify_path};
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn manifest_paths_use_native_separators() {
+        let joined = join_manifest_path(Path::new("plugin"), "target/release/x");
+        let expected: PathBuf = ["plugin", "target", "release", "x"].iter().collect();
+        assert_eq!(joined, expected);
+        assert_eq!(joined.to_string_lossy().contains('/'), cfg!(unix));
+    }
 
     #[test]
     fn simplifies_verbatim_drive_paths_only() {
