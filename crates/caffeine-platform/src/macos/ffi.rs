@@ -189,3 +189,26 @@ pub fn root_domain_property(key: &str) -> Option<CfOwned> {
     unsafe { IOObjectRelease(service) };
     CfOwned::new(value)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn null_is_not_owned_or_released() {
+        assert!(CfOwned::new(std::ptr::null()).is_none());
+    }
+
+    #[test]
+    fn missing_registry_properties_are_none() {
+        // Machines without a lid (desktop Macs, CI VMs) have no
+        // AppleClamshellState; reading a missing property must not crash.
+        assert!(root_domain_property("CaffeineNoSuchProperty").is_none());
+    }
+
+    #[test]
+    fn strings_round_trip() {
+        let s = cf_string("caffeine").unwrap();
+        assert_eq!(to_string(s.as_ptr()).as_deref(), Some("caffeine"));
+    }
+}
