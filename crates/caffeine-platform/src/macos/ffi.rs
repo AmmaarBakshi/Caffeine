@@ -88,7 +88,9 @@ pub struct CfOwned(CFTypeRef);
 impl CfOwned {
     /// Take ownership of a +1 reference. Returns `None` for null.
     pub fn new(ptr: CFTypeRef) -> Option<CfOwned> {
-        (!ptr.is_null()).then_some(CfOwned(ptr))
+        // Not `then_some`: it would build (and drop, i.e. CFRelease) a
+        // CfOwned(NULL) eagerly, and CFRelease(NULL) traps.
+        (!ptr.is_null()).then(|| CfOwned(ptr))
     }
 
     pub fn as_ptr(&self) -> CFTypeRef {
