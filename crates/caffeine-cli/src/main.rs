@@ -115,13 +115,17 @@ fn dispatch(ctx: &mut Ctx, cli: &Cli) -> Result<ExitCode> {
         Command::Plugin(args) => commands::plugin::run(ctx, &args.action),
         Command::External(argv) => commands::plugin::external(ctx, argv),
         Command::Completions { shell } => {
-            clap_complete::generate(
-                *shell,
-                &mut Cli::command(),
-                "caffeine",
-                &mut std::io::stdout(),
-            );
-            Ok(ExitCode::SUCCESS)
+            // clap_complete panics on write errors, so render into memory
+            // and treat a closed pipe (`caffeine completions bash | head`)
+            // like the rest of the output does.
+            let mut script = Vec::new();
+            clap_complete::generate(*shell, &mut Cli::command(), "caffeine", &mut script);
+            match std::io::Write::write_all(&mut std::io::stdout().lock(), &script) {
+                Err(e) if e.kind() != std::io::ErrorKind::BrokenPipe => {
+                    Err(Error::io("could not write the completion script", e))
+                }
+                _ => Ok(ExitCode::SUCCESS),
+            }
         }
         Command::Host => unreachable!("handled before context creation"),
     }
