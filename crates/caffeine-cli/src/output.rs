@@ -84,6 +84,14 @@ impl Output {
         }
     }
 
+    /// A JSON-mode output for errors reported before the CLI args are parsed.
+    pub fn json_only() -> Output {
+        Output {
+            json: true,
+            ..Output::plain()
+        }
+    }
+
     pub fn is_json(&self) -> bool {
         self.json
     }

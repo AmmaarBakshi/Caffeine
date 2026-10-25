@@ -22,9 +22,16 @@ fn main() -> ExitCode {
         Ok(cli) => cli,
         Err(e) => {
             // --help and --version are "errors" for clap but exit 0.
-            let code = if e.use_stderr() { 2 } else { 0 };
-            let _ = e.print();
-            return ExitCode::from(code);
+            if !e.use_stderr() {
+                let _ = e.print();
+                return ExitCode::SUCCESS;
+            }
+            if json_requested() {
+                Output::json_only().error(&usage_error(&e));
+            } else {
+                let _ = e.print();
+            }
+            return ExitCode::from(2);
         }
     };
 
@@ -129,4 +136,32 @@ fn dispatch(ctx: &mut Ctx, cli: &Cli) -> Result<ExitCode> {
         }
         Command::Host => unreachable!("handled before context creation"),
     }
+}
+
+/// Whether `--json` appears among the global options. Used when clap could
+/// not parse the command line, so the error can still be one JSON document.
+fn json_requested() -> bool {
+    std::env::args_os()
+        .skip(1)
+        .take_while(|a| a != "--")
+        .any(|a| a == "--json")
+}
+
+/// Turn a clap parse error into the CLI's usage error: clap's message up to
+/// the first blank line, on one line and without its `error: ` prefix, with
+/// clap's `Usage:` line as the hint.
+fn usage_error(e: &clap::Error) -> Error {
+    let rendered = e.render().to_string();
+    let message = rendered
+        .lines()
+        .take_while(|l| !l.trim().is_empty())
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join(" ");
+    let message = message.strip_prefix("error: ").unwrap_or(&message);
+    let hint = rendered
+        .lines()
+        .find(|l| l.starts_with("Usage: "))
+        .map_or("run `caffeine --help`".to_string(), str::to_string);
+    Error::usage(message).with_hint(hint)
 }
