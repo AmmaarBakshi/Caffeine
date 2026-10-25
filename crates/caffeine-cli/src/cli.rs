@@ -21,7 +21,7 @@ Run `caffeine doctor` if something does not work as expected.";
 /// mechanisms. It never simulates input, never blocks an explicit sleep
 /// request and never changes persistent power settings unless asked to.
 #[derive(Debug, Parser)]
-#[command(name = "caffeine", version, about, long_about, after_help = AFTER_HELP)]
+#[command(name = "caffeine", bin_name = "caffeine", version, about, long_about, after_help = AFTER_HELP)]
 #[command(propagate_version = true, max_term_width = 100)]
 pub struct Cli {
     /// Open the interactive terminal configuration editor.
