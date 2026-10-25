@@ -77,7 +77,7 @@ strip = "symbols"
     let readme = format!(
         r#"# {name}
 
-A [Caffeine](https://github.com/AMMAAR-IC/caffeine) plugin.
+A [Caffeine](https://github.com/AmmaarBakshi/Caffeine) plugin.
 
 ## Develop
 
