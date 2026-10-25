@@ -568,7 +568,7 @@ fn create(ctx: &Ctx, name: &str, path: Option<&Path>, api_path: Option<&Path>) -
         ctx.out.line(format!("  {}", f.display()));
     }
     ctx.out.line(format!(
-        "\nNext:\n  cd {}\n  cargo build --release\n  caffeine plugin validate .\n  caffeine plugin install . && caffeine plugin enable {name}",
+        "\nNext:\n  cd {}\n  cargo build --release\n  caffeine plugin validate .\n  caffeine plugin install .\n  caffeine plugin enable {name}",
         dir.display()
     ));
     Ok(ExitCode::SUCCESS)
