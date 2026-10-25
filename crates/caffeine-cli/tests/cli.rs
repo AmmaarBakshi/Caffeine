@@ -205,6 +205,30 @@ fn json_errors_are_a_single_document() {
 }
 
 #[test]
+fn json_argument_errors_are_a_single_document() {
+    let home = Home::new();
+    for args in [
+        &["start", "--bogus-flag"][..],
+        &["start", "--duration"],
+        &["plugin", "info"],
+        &["status", "--color", "purple"],
+    ] {
+        let (code, v) = home.json(args);
+        assert_eq!(code, 2, "{args:?}");
+        assert_eq!(v["error"]["kind"], "usage", "{args:?}");
+        let message = v["error"]["message"].as_str().unwrap();
+        assert!(!message.starts_with("error:"), "{args:?}: {message}");
+    }
+    // --json after the command is still a global option.
+    let out = home.run(&["start", "--bogus-flag", "--json"]);
+    assert!(serde_json::from_slice::<Value>(&out.stdout).is_ok());
+    // --help and --version are not errors, even with --json.
+    let out = home.run(&["--json", "--version"]);
+    assert_eq!(out.status.code(), Some(0));
+    assert!(stdout(&out).starts_with("caffeine "));
+}
+
+#[test]
 fn built_in_build_plugin() {
     let home = Home::new();
     let (_, list) = home.json(&["plugin", "list"]);
