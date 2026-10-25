@@ -84,6 +84,9 @@ refused with exit 4. Configuration, plugins and `doctor` work as normal.
   plus manual use of `start`/`stop`/`status`/`run`, the `build` plugin and
   third-party plugin install/enable/run/tamper/remove, all against real power
   requests.
-- **Linux (x86_64, aarch64), macOS (x86_64, aarch64), FreeBSD:**
-  cross-compiled and checked with `cargo check` and `clippy` from Windows. CI
-  runs the test suite on GitHub's Ubuntu, macOS and Windows runners.
+- **Ubuntu 24.04 under WSL 2 (x86_64):** the full test suite and the CI smoke
+  test. Inside WSL, logind inhibitors only affect the Linux side, so
+  `idle-sleep` is reported as *limited* and there's no lid.
+- **Linux on aarch64, macOS (x86_64, aarch64), FreeBSD:** cross-compiled and
+  checked with `cargo check` and `clippy` from Windows. CI runs the test suite
+  on GitHub's Ubuntu, macOS and Windows runners.
