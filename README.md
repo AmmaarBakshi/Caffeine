@@ -110,6 +110,8 @@ needs restoring is reported by `caffeine doctor` and fixed by
 - [Installation and uninstallation](docs/install.md)
 - [Security model](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
 
 ## License
 
