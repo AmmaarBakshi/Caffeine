@@ -87,6 +87,9 @@ refused with exit 4. Configuration, plugins and `doctor` work as normal.
 - **Ubuntu 24.04 under WSL 2 (x86_64):** the full test suite and the CI smoke
   test. Inside WSL, logind inhibitors only affect the Linux side, so
   `idle-sleep` is reported as *limited* and there's no lid.
-- **Linux on aarch64, macOS (x86_64, aarch64), FreeBSD:** cross-compiled and
-  checked with `cargo check` and `clippy` from Windows. CI runs the test suite
-  on GitHub's Ubuntu, macOS and Windows runners.
+- **macOS 26 on Apple Silicon (GitHub's arm64 runner, a VM without a lid):**
+  the full test suite, including sessions with real IOKit assertions, and the
+  CI smoke test.
+- **Linux on aarch64, macOS on Intel, FreeBSD:** cross-compiled and checked
+  with `cargo check` and `clippy` from Windows. CI runs the test suite on
+  GitHub's Ubuntu, macOS and Windows runners.
