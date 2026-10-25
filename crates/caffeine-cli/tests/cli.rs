@@ -90,6 +90,32 @@ fn version_and_help() {
 }
 
 #[test]
+fn completions_for_every_shell() {
+    let home = Home::new();
+    for shell in ["bash", "elvish", "fish", "powershell", "zsh"] {
+        let out = home.run(&["completions", shell]);
+        assert!(out.status.success(), "{shell}: {}", stderr(&out));
+        assert!(stdout(&out).contains("caffeine"), "{shell}");
+    }
+}
+
+#[test]
+fn completions_survive_a_closed_pipe() {
+    // `caffeine completions bash | head -1` must not panic.
+    let home = Home::new();
+    let mut child = home
+        .cmd(&["completions", "bash"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    drop(child.stdout.take());
+    let out = child.wait_with_output().unwrap();
+    assert!(!stderr(&out).contains("panicked"), "{}", stderr(&out));
+    assert_eq!(out.status.code(), Some(0));
+}
+
+#[test]
 fn capabilities_report_every_capability() {
     let home = Home::new();
     let (code, v) = home.json(&["capabilities"]);
