@@ -376,3 +376,29 @@ fn run_passes_through_the_exit_code() {
     let out = home.run(&["-q", "run", "--", "definitely-not-a-program-xyz"]);
     assert_ne!(out.status.code(), Some(0));
 }
+
+#[test]
+fn json_run_keeps_the_command_output_off_stdout() {
+    let home = Home::new();
+    let exe = std::env::current_exe().unwrap();
+    // This test binary prints "running 0 tests" etc. on its stdout.
+    let out = home.run(&[
+        "--json",
+        "run",
+        "--",
+        exe.to_str().unwrap(),
+        "--exact",
+        "no-such-test",
+    ]);
+    if matches!(out.status.code(), Some(4 | 5)) {
+        return; // No assertion available here (see session_lifecycle).
+    }
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let events: Vec<Value> = stdout(&out)
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap_or_else(|e| panic!("{e}: {l}")))
+        .collect();
+    assert_eq!(events.first().unwrap()["event"], "started");
+    assert_eq!(events.last().unwrap()["event"], "ended");
+    assert!(stderr(&out).contains("running 0 tests"), "{}", stderr(&out));
+}
