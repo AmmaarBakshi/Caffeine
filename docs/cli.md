@@ -100,6 +100,9 @@ the request, the command just runs. If the session ends early (because of
 `caffeine stop`, the battery rule or the duration), Caffeine keeps waiting for
 the command and doesn't kill it.
 
+With `--json`, stdout carries only the JSON Lines events of a foreground
+session, and the command's own stdout goes to stderr.
+
 ## Lid
 
 ### `caffeine lid` / `caffeine lid status`
